@@ -17,7 +17,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
 
 .app{height:100%;width:100%;display:flex;flex-direction:column;position:relative;background:var(--bg);}
 
-/* ── TOP HEADER (RESTORED OFFICIAL YOUTUBE LOGO & HEADER) ── */
+/* ── TOP HEADER (DEFAULT YOUTUBE LOGO & HEADER) ── */
 .yt-header{
   height:calc(52px + var(--safe-top));
   padding-top:var(--safe-top);
@@ -109,33 +109,6 @@ body.is-landscape .yt-nav,
   z-index:99999!important;aspect-ratio:unset!important;margin:0!important;padding:0!important;
 }
 
-/* ⛶ FULLSCREEN BUTTON PLACED IN BOTTOM RIGHT CORNER OF PLAYER (REPLACING YOUTUBE BUTTON) */
-.fs-corner-btn{
-  position:absolute;bottom:12px;right:12px;z-index:20;
-  background:rgba(0,0,0,.75);color:#fff;border:1px solid rgba(255,255,255,.3);
-  border-radius:6px;padding:.3rem .6rem;font-size:.9rem;font-weight:700;
-  display:flex;align-items:center;gap:.3rem;cursor:pointer;
-}
-
-/* FLOATING EXIT FULLSCREEN BUTTON IN FULLSCREEN MODE */
-.exit-fs-btn{
-  position:absolute;top:28px;left:16px;z-index:100000;
-  background:rgba(0,0,0,.85);color:#fff;border:1px solid rgba(255,255,255,.3);
-  border-radius:20px;padding:.4rem 1rem;font-size:.85rem;font-weight:700;
-  display:none;align-items:center;gap:.4rem;cursor:pointer;
-}
-.yt-watch-screen.is-fullscreen .exit-fs-btn{display:flex!important;}
-
-/* SHIELD OVERLAYS TO STOP YOUTUBE LOGO REDIRECTING TO CHROME */
-.yt-click-shield-top{
-  position:absolute;top:0;left:0;right:0;height:60px;
-  z-index:5;background:transparent;pointer-events:auto;
-}
-.yt-click-shield-bottom{
-  position:absolute;bottom:0;right:0;width:140px;height:45px;
-  z-index:5;background:transparent;pointer-events:auto;
-}
-
 #ytPlayerContainer{width:100%;height:100%;border:none;}
 
 .yt-watch-info{padding:1rem;}
@@ -156,31 +129,19 @@ body.is-landscape .yt-nav,
 .yt-act-pill.dl-accent{background:var(--accent);font-weight:700;}
 .yt-act-pill.audio-accent{background:#a855f7;font-weight:700;}
 
-/* ── YOUTUBE MENU SHEET ── */
-.yt-settings-modal{
-  position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.75);
-  display:none;align-items:center;justify-content:center;padding:1rem;
+/* DOWNLOAD OPTIONS SHEET */
+.dl-modal{
+  position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.8);
+  display:none;align-items:flex-end;justify-content:center;
 }
-.yt-settings-sheet{
-  width:100%;max-width:360px;background:#212121;border-radius:16px;
-  overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.8);border:1px solid #333;
+.dl-sheet{
+  width:100%;background:#212121;border-radius:16px 16px 0 0;
+  padding:1.5rem;display:flex;flex-direction:column;gap:1rem;
 }
-.yt-sheet-item{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:.9rem 1.2rem;color:#fff;font-size:.95rem;font-weight:500;
-  border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;
+.dl-option{
+  background:#333;border:none;border-radius:12px;color:#fff;
+  padding:1rem;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:space-between;cursor:pointer;
 }
-.yt-sheet-item:last-child{border-bottom:none;}
-.yt-sheet-left{display:flex;align-items:center;gap:.9rem;}
-.yt-sheet-icon{font-size:1.2rem;width:24px;text-align:center;}
-.yt-sheet-value{color:var(--muted);font-size:.85rem;}
-
-/* LOCK SCREEN OVERLAY */
-.lock-screen-overlay{
-  position:absolute;inset:0;z-index:99;background:rgba(0,0,0,.9);
-  display:none;flex-direction:column;align-items:center;justify-content:center;gap:1rem;
-}
-.lock-btn{background:#fff;color:#000;border:none;border-radius:20px;padding:.6rem 1.4rem;font-weight:700;cursor:pointer;}
 
 #bgAudio{display:none;}
 </style>
@@ -190,7 +151,7 @@ body.is-landscape .yt-nav,
 <audio id="bgAudio" crossorigin="anonymous" preload="auto"></audio>
 
 <div class="app" id="appRoot">
-  <!-- TOP HEADER (OFFICIAL YOUTUBE LOGO) -->
+  <!-- TOP HEADER (DEFAULT YOUTUBE LOGO) -->
   <div class="yt-header">
     <div class="yt-logo" onclick="switchTab('home')">
       <div class="yt-logo-icon"></div>
@@ -246,23 +207,12 @@ body.is-landscape .yt-nav,
     <button class="yt-back-btn" onclick="closeWatch()">← Back</button>
     <div style="font-weight:700;font-size:.9rem;">Now Playing</div>
     <div style="display:flex;gap:.6rem;align-items:center;">
-      <button class="yt-back-btn" onclick="openSettingsModal()" title="Settings">⚙️</button>
+      <button class="yt-back-btn" onclick="toggleFullscreen()" title="Fullscreen" style="font-size:1.3rem;">⛶</button>
     </div>
   </div>
 
   <div class="yt-player-box" id="playerBox">
-    <!-- ⛶ FULLSCREEN BUTTON REPLACING YOUTUBE BUTTON IN BOTTOM RIGHT CORNER -->
-    <button class="fs-corner-btn" onclick="toggleFullscreen()">⛶</button>
-    <button class="exit-fs-btn" onclick="toggleFullscreen()">🗗 Exit Fullscreen</button>
-    <div class="yt-click-shield-top"></div>
-    <div class="yt-click-shield-bottom" onclick="toggleFullscreen()"></div>
     <div id="ytPlayerContainer"></div>
-
-    <div class="lock-screen-overlay" id="lockOverlay">
-      <div style="font-size:2.5rem;">🔒</div>
-      <div style="font-size:1.1rem;font-weight:700;">Screen Locked</div>
-      <button class="lock-btn" onclick="unlockPlayerScreen()">Tap to Unlock</button>
-    </div>
   </div>
 
   <div class="yt-watch-info">
@@ -286,50 +236,6 @@ body.is-landscape .yt-nav,
       <button class="yt-act-pill dl-accent" onclick="openDlModal()">⬇️ Download</button>
       <button class="yt-act-pill">👍 Like</button>
       <button class="yt-act-pill">↗️ Share</button>
-    </div>
-  </div>
-</div>
-
-<!-- YOUTUBE PLAYER SETTINGS MENU SHEET -->
-<div class="yt-settings-modal" id="settingsModal" onclick="closeSettingsModal()">
-  <div class="yt-settings-sheet" onclick="event.stopPropagation()">
-    <div class="yt-sheet-item" onclick="cycleQuality()">
-      <div class="yt-sheet-left">
-        <span class="yt-sheet-icon">⚙️</span>
-        Quality
-      </div>
-      <div class="yt-sheet-value" id="qualityLabel">Auto (720p) ›</div>
-    </div>
-
-    <div class="yt-sheet-item" onclick="cycleSpeed()">
-      <div class="yt-sheet-left">
-        <span class="yt-sheet-icon">▶️</span>
-        Playback speed
-      </div>
-      <div class="yt-sheet-value" id="speedLabel">1x ›</div>
-    </div>
-
-    <div class="yt-sheet-item" onclick="toggleCaptions()">
-      <div class="yt-sheet-left">
-        <span class="yt-sheet-icon">💬</span>
-        Captions
-      </div>
-      <div class="yt-sheet-value" id="captionsLabel">Off ›</div>
-    </div>
-
-    <div class="yt-sheet-item" onclick="lockPlayerScreen()">
-      <div class="yt-sheet-left">
-        <span class="yt-sheet-icon">🔒</span>
-        Lock screen
-      </div>
-      <div class="yt-sheet-value">›</div>
-    </div>
-
-    <div class="yt-sheet-item" onclick="closeSettingsModal()">
-      <div class="yt-sheet-left">
-        <span class="yt-sheet-icon">✖</span>
-        Close
-      </div>
     </div>
   </div>
 </div>
@@ -358,12 +264,6 @@ let currentVideo = null;
 let isBgPlaying = false;
 let backPressCount = 0;
 
-let speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
-let speedIdx = 2; // default 1x
-let qualities = ['auto', 'hd1080', 'hd720', 'large', 'medium', 'small'];
-let qualityIdx = 0;
-let captionsOn = false;
-
 function onYouTubeIframeAPIReady() {
   ytPlayer = new YT.Player('ytPlayerContainer', {
     height: '100%',
@@ -373,9 +273,8 @@ function onYouTubeIframeAPIReady() {
       'controls': 1,
       'rel': 0,
       'playsinline': 1,
-      'modestbranding': 1,
       'enablejsapi': 1,
-      'fs': 0
+      'fs': 1
     }
   });
 }
@@ -402,7 +301,7 @@ async function doSearch() {
   if(!q) return;
 
   const feed = document.getElementById('videoFeed');
-  feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">Searching videos...</div>`;
+  feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">Searching YouTube...</div>`;
 
   try {
     const r = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
@@ -469,6 +368,13 @@ function openWatch(id, title, artist, thumb) {
 
 function closeWatch() {
   const watchScreen = document.getElementById('watchScreen');
+  if (watchScreen.classList.contains('is-fullscreen')) {
+    // If in fullscreen, tapping Back exits fullscreen first!
+    watchScreen.classList.remove('is-fullscreen');
+    document.getElementById('mainNav').style.display = 'flex';
+    return;
+  }
+
   watchScreen.style.display = 'none';
   watchScreen.classList.remove('is-fullscreen');
   document.body.classList.remove('is-landscape');
@@ -487,49 +393,6 @@ function toggleFullscreen() {
   ws.classList.toggle('is-fullscreen');
   const isFS = ws.classList.contains('is-fullscreen');
   document.getElementById('mainNav').style.display = isFS ? 'none' : 'flex';
-}
-
-// ⚙️ YOUTUBE SETTINGS MENU SHEET FUNCTIONS
-function openSettingsModal() {
-  document.getElementById('settingsModal').style.display = 'flex';
-}
-function closeSettingsModal() {
-  document.getElementById('settingsModal').style.display = 'none';
-}
-
-function cycleSpeed() {
-  speedIdx = (speedIdx + 1) % speeds.length;
-  const spd = speeds[speedIdx];
-  document.getElementById('speedLabel').textContent = `${spd}x ›`;
-  if(ytPlayer && ytPlayer.setPlaybackRate) {
-    ytPlayer.setPlaybackRate(spd);
-  }
-}
-
-function cycleQuality() {
-  qualityIdx = (qualityIdx + 1) % qualities.length;
-  const q = qualities[qualityIdx];
-  document.getElementById('qualityLabel').textContent = `${q} ›`;
-  if(ytPlayer && ytPlayer.setPlaybackQuality) {
-    ytPlayer.setPlaybackQuality(q);
-  }
-}
-
-function toggleCaptions() {
-  captionsOn = !captionsOn;
-  document.getElementById('captionsLabel').textContent = captionsOn ? 'On ›' : 'Off ›';
-  if(ytPlayer) {
-    if(captionsOn && ytPlayer.loadModule) ytPlayer.loadModule('captions');
-    else if(!captionsOn && ytPlayer.unloadModule) ytPlayer.unloadModule('captions');
-  }
-}
-
-function lockPlayerScreen() {
-  closeSettingsModal();
-  document.getElementById('lockOverlay').style.display = 'flex';
-}
-function unlockPlayerScreen() {
-  document.getElementById('lockOverlay').style.display = 'none';
 }
 
 // 🎧 TRUE BACKGROUND AUDIO PLAYBACK MODE
@@ -583,16 +446,11 @@ function triggerDownload(format) {
   }
 }
 
-// 📱 HARDWARE BACK BUTTON HANDLER
+// 📱 HARDWARE BACK BUTTON HANDLER (BACK BUTTON EXITS FULLSCREEN)
 function handleHardwareBack() {
-  const settingsModal = document.getElementById('settingsModal');
   const dlModal = document.getElementById('dlModal');
   const ws = document.getElementById('watchScreen');
 
-  if(settingsModal.style.display === 'flex') {
-    closeSettingsModal();
-    return true;
-  }
   if(ws.classList.contains('is-fullscreen')) {
     ws.classList.remove('is-fullscreen');
     document.getElementById('mainNav').style.display = 'flex';
