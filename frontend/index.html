@@ -108,10 +108,14 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
 }
 .yt-watch-screen.is-fullscreen .exit-fs-btn{display:flex!important;}
 
-/* SHIELD OVERLAY TO STOP YOUTUBE LOGO REDIRECTING TO CHROME */
-.yt-click-shield{
-  position:absolute;top:0;left:0;right:0;height:45px;
-  z-index:2;background:transparent;pointer-events:auto;
+/* SHIELD OVERLAYS TO STOP YOUTUBE LOGO & TITLE REDIRECTING TO CHROME */
+.yt-click-shield-top{
+  position:absolute;top:0;left:0;right:0;height:60px;
+  z-index:5;background:transparent;pointer-events:auto;
+}
+.yt-click-shield-bottom{
+  position:absolute;bottom:0;right:0;width:140px;height:45px;
+  z-index:5;background:transparent;pointer-events:auto;
 }
 
 #ytPlayerContainer{width:100%;height:100%;border:none;}
@@ -231,7 +235,8 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
 
   <div class="yt-player-box" id="playerBox">
     <button class="exit-fs-btn" onclick="toggleFullscreen()">🗗 Exit Fullscreen</button>
-    <div class="yt-click-shield"></div>
+    <div class="yt-click-shield-top"></div>
+    <div class="yt-click-shield-bottom"></div>
     <div id="ytPlayerContainer"></div>
 
     <div class="lock-screen-overlay" id="lockOverlay">
