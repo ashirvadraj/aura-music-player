@@ -436,6 +436,21 @@ async function doSearch(){
   try {
     const promises = [];
     
+    if (activeSource === 'all' || activeSource === 'saavn') {
+      promises.push(
+        fetch(`${API}/api/search/saavn?q=${encodeURIComponent(q)}`)
+          .then(r => r.json())
+          .then(r => {
+            if (r.results) {
+              results = results.concat(r.results);
+              queue = results;
+              showResults(results);
+            }
+          })
+          .catch(() => {})
+      );
+    }
+
     if (activeSource === 'all' || activeSource === 'apple') {
       promises.push(
         fetch(`${API}/api/search/apple?q=${encodeURIComponent(q)}`)
@@ -515,7 +530,6 @@ let trackMap = {};
 async function playById(id){
   const t = trackMap[id];
   if(!t){ showToast('Track not found'); return; }
-  // sync queue index
   const idx = queue.findIndex(x=>x.id===id);
   if(idx >= 0) qIdx = idx;
   currentTrack = t;
@@ -526,37 +540,42 @@ async function playById(id){
   document.getElementById('fpPlayBtn').textContent='⏸';
   document.getElementById('videoBtn').style.display = t.source==='youtube'?'':'none';
 
-  // Highlight playing track
   document.querySelectorAll('.track').forEach(el=>el.classList.remove('playing'));
   const trackEl = document.getElementById(`track_${id}`);
   if(trackEl) trackEl.classList.add('playing');
 
-  // Build stream URL
-  const streamUrl = t.videoId
+  const streamUrl = t.directStreamUrl
+    ? t.directStreamUrl
+    : t.videoId
     ? `${API}/api/stream?videoId=${encodeURIComponent(t.videoId)}`
     : `${API}/api/stream?q=${encodeURIComponent(t.streamQuery||t.title+' '+t.artist+' full official audio')}`;
 
-  console.log('Playing:', t.title, '| URL:', streamUrl);
+  // Unlock AudioContext on mobile (must happen inside user gesture)
+  if(!audioCtx) initAudio();
+  if(audioCtx && audioCtx.state === 'suspended') {
+    await audioCtx.resume();
+  }
 
-  try{
-    if(!audioCtx) initAudio();
+  // Only reload src if it changed
+  if(audio.src !== streamUrl){
     audio.pause();
-    audio.src = '';
-    audio.load();
     audio.src = streamUrl;
+    audio.load();
     audio.onerror = () => {
-      console.error('Audio error code:', audio.error && audio.error.code);
       showToast('Stream error – try another song');
     };
-    const playPromise = audio.play();
-    if(playPromise !== undefined){
-      playPromise.catch(err => {
-        console.error('Play error:', err.message);
-        showToast('Tap play again to start');
-      });
-    }
-  }catch(e){ console.error('playById error:', e); showToast('Error: '+e.message); }
+  }
+
+  try {
+    await audio.play();
+  } catch(err) {
+    // On mobile, first tap unlocks audio — second tap plays
+    showToast('Tap again to play ▶');
+    // Pre-unlock for next tap
+    audio.load();
+  }
 }
+
 
 async function playTrack(idx){
   if(idx<0||idx>=queue.length) return;
