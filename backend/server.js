@@ -95,13 +95,13 @@ app.get('/api/download', (req, res) => {
   if (!videoId && !q) return res.status(400).json({ error: 'Missing videoId or q' });
 
   const isMp4 = (format === 'mp4');
-  const ext = isMp4 ? 'mp4' : 'm4a';
-  const mime = isMp4 ? 'video/mp4' : 'audio/mp4';
+  const ext = isMp4 ? 'mp4' : 'mp3';
+  const mime = isMp4 ? 'video/mp4' : 'audio/mpeg';
   const sanitizeTitle = (title || videoId || 'youtube_track').replace(/[/\\?%*:|"<>]/g, '_');
   const fileName = `${sanitizeTitle}.${ext}`;
 
   const target = videoId ? `https://www.youtube.com/watch?v=${videoId}` : `ytsearch1:${q}`;
-  const formatArg = isMp4 ? 'best[ext=mp4]/best' : 'ba[ext=m4a]/ba/bestaudio';
+  const formatArg = isMp4 ? 'best[ext=mp4]/best' : 'bestaudio/ba/best';
 
   res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
   res.setHeader('Content-Type', mime);
