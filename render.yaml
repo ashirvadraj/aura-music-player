@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: aura-music-api
+    env: node
+    buildCommand: npm install && pip install yt-dlp
+    startCommand: node backend/server.js
+    plan: free
+    envVars:
+      - key: YTDLP_CMD
+        value: yt-dlp
