@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
 <title>YouTube</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"/>
 <style>
@@ -12,9 +12,9 @@
   --text:#f1f1f1;--muted:#aaa;--accent:#ff0000;
   --pill-bg:rgba(255,255,255,.1);
 }
-html,body{height:100%;overflow:hidden;font-family:'Roboto',sans-serif;background:var(--bg);color:var(--text);user-select:none;}
+html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif;background:var(--bg);color:var(--text);user-select:none;}
 
-.app{height:100vh;display:flex;flex-direction:column;max-width:500px;margin:0 auto;position:relative;background:var(--bg);}
+.app{height:100%;width:100%;display:flex;flex-direction:column;position:relative;background:var(--bg);}
 
 /* ── YOUTUBE TOP HEADER ── */
 .yt-header{
@@ -29,7 +29,7 @@ html,body{height:100%;overflow:hidden;font-family:'Roboto',sans-serif;background
 .yt-hdr-actions{display:flex;align-items:center;gap:1.2rem;}
 .yt-hdr-icon{font-size:1.2rem;cursor:pointer;color:var(--text);}
 
-/* ── SEARCH BAR OVERLAY ── */
+/* ── SEARCH BAR ── */
 .yt-search-bar{
   padding:.6rem 1rem;background:var(--bg);border-bottom:1px solid var(--border);
   display:flex;gap:.5rem;align-items:center;flex-shrink:0;
@@ -44,7 +44,7 @@ html,body{height:100%;overflow:hidden;font-family:'Roboto',sans-serif;background
 /* ── FEED / SCROLL ── */
 .yt-feed{flex:1;overflow-y:auto;padding-bottom:70px;}
 
-/* ── YOUTUBE VIDEO CARD (REPLICA) ── */
+/* ── YOUTUBE VIDEO CARD ── */
 .yt-card{margin-bottom:1.2rem;cursor:pointer;}
 .yt-thumb-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#1e1e1e;}
 .yt-thumb-wrap img{width:100%;height:100%;object-fit:cover;}
@@ -56,13 +56,12 @@ html,body{height:100%;overflow:hidden;font-family:'Roboto',sans-serif;background
 .yt-details{display:flex;gap:.8rem;padding:.8rem 1rem 0;}
 .yt-avatar{width:36px;height:36px;border-radius:50%;background:#333;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;}
 .yt-meta{flex:1;min-width:0;}
-.yt-title{font-size:.9rem;font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.yt-title{font-size:.92rem;font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .yt-subtext{font-size:.78rem;color:var(--muted);margin-top:4px;}
 
-/* ── BOTTOM NAV BAR (YOUTUBE REPLICA) ── */
+/* ── BOTTOM NAV BAR ── */
 .yt-nav{
-  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
-  width:100%;max-width:500px;height:52px;
+  position:fixed;bottom:0;left:0;right:0;height:52px;
   background:#0f0f0f;border-top:1px solid rgba(255,255,255,.1);
   display:flex;align-items:center;justify-content:space-around;z-index:90;
 }
@@ -70,13 +69,23 @@ html,body{height:100%;overflow:hidden;font-family:'Roboto',sans-serif;background
 .yt-nav-item.active{color:#fff;}
 .yt-nav-icon{font-size:1.2rem;}
 
-/* ── WATCH SCREEN / PLAYER MODAL ── */
+/* ── WATCH SCREEN / PLAYER ── */
 .yt-watch-screen{
   position:fixed;inset:0;z-index:200;background:var(--bg);
-  display:none;flex-direction:column;max-width:500px;margin:0 auto;overflow-y:auto;
+  display:none;flex-direction:column;width:100%;height:100%;overflow-y:auto;
 }
 .yt-player-box{width:100%;aspect-ratio:16/9;background:#000;position:sticky;top:0;z-index:10;}
-#ytPlayerIframe{width:100%;height:100%;border:none;}
+.yt-player-box.fullscreen{
+  position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;
+  z-index:99999!important;aspect-ratio:unset!important;
+}
+#ytPlayerContainer{width:100%;height:100%;border:none;}
+
+.yt-watch-topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.6rem 1rem;background:#121212;border-bottom:1px solid var(--border);
+}
+.yt-back-btn{background:none;border:none;color:#fff;font-size:1.4rem;cursor:pointer;padding:0 .4rem;}
 
 .yt-watch-info{padding:1rem;}
 .yt-watch-title{font-size:1.05rem;font-weight:700;line-height:1.4;}
@@ -86,7 +95,7 @@ html,body{height:100%;overflow:hidden;font-family:'Roboto',sans-serif;background
 .yt-chan-left{display:flex;align-items:center;gap:.7rem;}
 .yt-sub-btn{background:#fff;color:#000;border:none;border-radius:18px;padding:.45rem 1rem;font-size:.85rem;font-weight:700;cursor:pointer;}
 
-/* ── ACTION BUTTONS ROW (LIKE / SHARE / DOWNLOAD) ── */
+/* ── ACTION BUTTONS ROW ── */
 .yt-actions-scroll{display:flex;gap:.6rem;overflow-x:auto;padding-bottom:.5rem;scrollbar-width:none;}
 .yt-act-pill{
   background:var(--pill-bg);border:none;border-radius:18px;color:#fff;
@@ -94,6 +103,7 @@ html,body{height:100%;overflow:hidden;font-family:'Roboto',sans-serif;background
   white-space:nowrap;cursor:pointer;flex-shrink:0;
 }
 .yt-act-pill.dl-accent{background:var(--accent);font-weight:700;}
+.yt-act-pill.audio-accent{background:#a855f7;font-weight:700;}
 
 /* ── DOWNLOAD OPTIONS MODAL ── */
 .dl-modal{
@@ -101,16 +111,21 @@ html,body{height:100%;overflow:hidden;font-family:'Roboto',sans-serif;background
   display:none;align-items:flex-end;justify-content:center;
 }
 .dl-sheet{
-  width:100%;max-width:500px;background:#212121;border-radius:16px 16px 0 0;
+  width:100%;background:#212121;border-radius:16px 16px 0 0;
   padding:1.5rem;display:flex;flex-direction:column;gap:1rem;
 }
 .dl-option{
   background:#333;border:none;border-radius:12px;color:#fff;
   padding:1rem;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:space-between;cursor:pointer;
 }
+
+/* ── HIDDEN AUDIO ELEMENT FOR BACKGROUND PLAY ── */
+#bgAudio{display:none;}
 </style>
 </head>
 <body>
+
+<audio id="bgAudio" crossorigin="anonymous"></audio>
 
 <div class="app">
   <!-- TOP HEADER -->
@@ -120,13 +135,13 @@ html,body{height:100%;overflow:hidden;font-family:'Roboto',sans-serif;background
       YouTube
     </div>
     <div class="yt-hdr-actions">
-      <span class="yt-hdr-icon" onclick="toggleSearch()">🔍</span>
+      <span class="yt-hdr-icon" onclick="focusSearch()">🔍</span>
       <span class="yt-hdr-icon">🔔</span>
     </div>
   </div>
 
   <!-- SEARCH BAR -->
-  <div class="yt-search-bar" id="searchRow">
+  <div class="yt-search-bar">
     <div class="yt-input-box">
       <span>🔍</span>
       <input type="text" id="searchInput" placeholder="Search YouTube..." onkeydown="if(event.key==='Enter')doSearch()"/>
@@ -164,20 +179,26 @@ html,body{height:100%;overflow:hidden;font-family:'Roboto',sans-serif;background
 
 <!-- WATCH SCREEN / PLAYER -->
 <div class="yt-watch-screen" id="watchScreen">
-  <div class="yt-player-box">
+  <div class="yt-watch-topbar">
+    <button class="yt-back-btn" onclick="closeWatch()">← Back</button>
+    <div style="font-weight:700;font-size:.9rem;">Now Playing</div>
+    <button class="yt-back-btn" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
+  </div>
+
+  <div class="yt-player-box" id="playerBox">
     <div id="ytPlayerContainer"></div>
   </div>
 
   <div class="yt-watch-info">
     <div class="yt-watch-title" id="wTitle">Video Title</div>
-    <div class="yt-watch-views" id="wViews">YouTube · 100K views</div>
+    <div class="yt-watch-views" id="wViews">YouTube · Official Stream</div>
 
     <div class="yt-channel-row">
       <div class="yt-chan-left">
         <div class="yt-avatar" id="wAvatar">Y</div>
         <div>
           <div style="font-weight:600;font-size:.9rem;" id="wChannel">Channel Name</div>
-          <div style="font-size:.75rem;color:#aaa;">1.2M subscribers</div>
+          <div style="font-size:.75rem;color:#aaa;">Subscribed</div>
         </div>
       </div>
       <button class="yt-sub-btn">Subscribe</button>
@@ -185,15 +206,11 @@ html,body{height:100%;overflow:hidden;font-family:'Roboto',sans-serif;background
 
     <!-- ACTION BUTTONS ROW -->
     <div class="yt-actions-scroll">
-      <button class="yt-act-pill">👍 12K | 👎</button>
-      <button class="yt-act-pill">↗️ Share</button>
+      <button class="yt-act-pill" id="bgPlayBtn" onclick="toggleBackgroundPlay()">🎧 Background Play</button>
       <button class="yt-act-pill dl-accent" onclick="openDlModal()">⬇️ Download</button>
-      <button class="yt-act-pill">✂️ Clip</button>
-      <button class="yt-act-pill">➕ Save</button>
+      <button class="yt-act-pill">👍 Like</button>
+      <button class="yt-act-pill">↗️ Share</button>
     </div>
-
-    <div style="margin-top:1.5rem;font-weight:700;font-size:.95rem;">Up Next</div>
-    <div id="upNextFeed" style="margin-top:1rem;"></div>
   </div>
 </div>
 
@@ -218,6 +235,8 @@ html,body{height:100%;overflow:hidden;font-family:'Roboto',sans-serif;background
 const API = 'https://aura-music-player-rj2v.onrender.com';
 let ytPlayer = null;
 let currentVideo = null;
+let isBgPlaying = false;
+let backPressCount = 0;
 
 function onYouTubeIframeAPIReady() {
   ytPlayer = new YT.Player('ytPlayerContainer', {
@@ -227,9 +246,8 @@ function onYouTubeIframeAPIReady() {
   });
 }
 
-function toggleSearch() {
-  const s = document.getElementById('searchInput');
-  s.focus();
+function focusSearch() {
+  document.getElementById('searchInput').focus();
 }
 
 async function doSearch() {
@@ -285,6 +303,48 @@ function openWatch(id, title, artist, thumb) {
   }
 }
 
+function closeWatch() {
+  document.getElementById('watchScreen').style.display = 'none';
+  if(ytPlayer && ytPlayer.pauseVideo) {
+    ytPlayer.pauseVideo();
+  }
+  const pb = document.getElementById('playerBox');
+  pb.classList.remove('fullscreen');
+}
+
+function toggleFullscreen() {
+  const pb = document.getElementById('playerBox');
+  pb.classList.toggle('fullscreen');
+}
+
+// 🎧 BACKGROUND AUDIO PLAYBACK MODE
+function toggleBackgroundPlay() {
+  const bgAudio = document.getElementById('bgAudio');
+  const btn = document.getElementById('bgPlayBtn');
+
+  if(!currentVideo) return;
+
+  if(isBgPlaying) {
+    bgAudio.pause();
+    isBgPlaying = false;
+    btn.classList.remove('audio-accent');
+    btn.textContent = '🎧 Background Play';
+  } else {
+    // Stop YouTube video player and play audio via native HTML5 <audio>
+    if(ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+
+    const streamUrl = `${API}/api/stream?q=${encodeURIComponent(currentVideo.title)}`;
+    bgAudio.src = streamUrl;
+    bgAudio.play().then(() => {
+      isBgPlaying = true;
+      btn.classList.add('audio-accent');
+      btn.textContent = '⏸ Playing in Background';
+    }).catch(e => {
+      alert('Background audio started. Keep app open or locked.');
+    });
+  }
+}
+
 function openDlModal() {
   document.getElementById('dlModal').style.display = 'flex';
 }
@@ -299,7 +359,7 @@ function triggerDownload(format) {
 
   const dlUrl = `${API}/api/download?videoId=${encodeURIComponent(currentVideo.id)}&title=${encodeURIComponent(currentVideo.title)}&format=${format}`;
   
-  // Reliable Native Android Download trigger
+  // Anchor download trigger
   const a = document.createElement('a');
   a.href = dlUrl;
   a.download = `${currentVideo.title}.${format}`;
@@ -308,6 +368,48 @@ function triggerDownload(format) {
   a.click();
   document.body.removeChild(a);
 }
+
+// 📱 HARDWARE BACK BUTTON HANDLER (2 Backs to Exit)
+function handleHardwareBack() {
+  const dlModal = document.getElementById('dlModal');
+  const watchScreen = document.getElementById('watchScreen');
+  const pb = document.getElementById('playerBox');
+
+  if(pb.classList.contains('fullscreen')) {
+    pb.classList.remove('fullscreen');
+    return true;
+  }
+  if(dlModal.style.display === 'flex') {
+    closeDlModal();
+    return true;
+  }
+  if(watchScreen.style.display === 'flex') {
+    closeWatch();
+    return true;
+  }
+
+  // 2 Backs gesture
+  backPressCount++;
+  if(backPressCount === 1) {
+    setTimeout(() => { backPressCount = 0; }, 2000);
+    return true; // consumed first back
+  } else if(backPressCount >= 2) {
+    if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+      window.Capacitor.Plugins.App.exitApp();
+    }
+    return false;
+  }
+  return false;
+}
+
+// Listen to Capacitor native back button
+document.addEventListener('DOMContentLoaded', () => {
+  if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.addListener('backButton', () => {
+      handleHardwareBack();
+    });
+  }
+});
 
 function escapeHtml(str) {
   return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -320,7 +422,6 @@ function fmtSec(sec) {
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-// Initial default search
 window.onload = () => {
   document.getElementById('searchInput').value = 'Tere bin';
   doSearch();
