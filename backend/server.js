@@ -126,10 +126,11 @@ app.get('/api/stream', async (req, res) => {
     ? `https://www.youtube.com/watch?v=${videoId}`
     : `ytsearch1:${q} official audio`;
 
-  // Step 1: Get direct stream URL
+  // Step 1: Get direct stream URL with Android player client to avoid datacenter IP blocks
   execFile(YTDLP, [
     ...YTDLP_ARGS_PREFIX,
     searchTarget,
+    '--extractor-args', 'youtube:player_client=android,web',
     '-f', 'ba[ext=m4a]/140/ba/bestaudio',
     '--get-url',
     '--no-playlist',
@@ -144,7 +145,9 @@ app.get('/api/stream', async (req, res) => {
 
     try {
       const rangeHeader = req.headers['range'];
-      const fetchHeaders = { 'User-Agent': 'Mozilla/5.0' };
+      const fetchHeaders = { 
+        'User-Agent': 'com.google.android.youtube/19.29.37 (Linux; U; Android 11; gts6l)'
+      };
       if (rangeHeader) fetchHeaders['Range'] = rangeHeader;
 
       const controller = new AbortController();
