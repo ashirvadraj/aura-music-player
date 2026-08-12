@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
-<title>Aura Player</title>
+<title>YouTube</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -17,7 +17,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
 
 .app{height:100%;width:100%;display:flex;flex-direction:column;position:relative;background:var(--bg);}
 
-/* ── TOP HEADER (REMOVED YOUTUBE TEXT, ADDED FULLSCREEN & SEARCH BUTTONS) ── */
+/* ── TOP HEADER (RESTORED OFFICIAL YOUTUBE LOGO & HEADER) ── */
 .yt-header{
   height:calc(52px + var(--safe-top));
   padding-top:var(--safe-top);
@@ -25,12 +25,11 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
   display:flex;align-items:center;justify-content:space-between;
   background:var(--bg);border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;z-index:10;
 }
-.yt-logo-btn{
-  background:none;border:none;color:#fff;font-weight:700;font-size:1.1rem;
-  display:flex;align-items:center;gap:.4rem;cursor:pointer;
-}
+.yt-logo{display:flex;align-items:center;gap:.4rem;font-weight:700;font-size:1.2rem;letter-spacing:-.5px;cursor:pointer;}
+.yt-logo-icon{width:30px;height:22px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;}
+.yt-logo-icon::after{content:'';border-style:solid;border-width:5px 0 5px 9px;border-color:transparent transparent transparent #fff;margin-left:2px;}
 
-.yt-hdr-actions{display:flex;align-items:center;gap:1rem;}
+.yt-hdr-actions{display:flex;align-items:center;gap:1.2rem;}
 .yt-hdr-icon{font-size:1.2rem;cursor:pointer;color:var(--text);background:none;border:none;}
 
 /* ── SEARCH BAR WITH CLEAR BUTTON ── */
@@ -110,7 +109,15 @@ body.is-landscape .yt-nav,
   z-index:99999!important;aspect-ratio:unset!important;margin:0!important;padding:0!important;
 }
 
-/* FLOATING EXIT FULLSCREEN BUTTON (CLEANLY POSITIONED BELOW STATUS BAR) */
+/* ⛶ FULLSCREEN BUTTON PLACED IN BOTTOM RIGHT CORNER OF PLAYER (REPLACING YOUTUBE BUTTON) */
+.fs-corner-btn{
+  position:absolute;bottom:12px;right:12px;z-index:20;
+  background:rgba(0,0,0,.75);color:#fff;border:1px solid rgba(255,255,255,.3);
+  border-radius:6px;padding:.3rem .6rem;font-size:.9rem;font-weight:700;
+  display:flex;align-items:center;gap:.3rem;cursor:pointer;
+}
+
+/* FLOATING EXIT FULLSCREEN BUTTON IN FULLSCREEN MODE */
 .exit-fs-btn{
   position:absolute;top:28px;left:16px;z-index:100000;
   background:rgba(0,0,0,.85);color:#fff;border:1px solid rgba(255,255,255,.3);
@@ -119,7 +126,7 @@ body.is-landscape .yt-nav,
 }
 .yt-watch-screen.is-fullscreen .exit-fs-btn{display:flex!important;}
 
-/* SHIELD OVERLAYS TO STOP YOUTUBE LOGO & TITLE REDIRECTING TO CHROME */
+/* SHIELD OVERLAYS TO STOP YOUTUBE LOGO REDIRECTING TO CHROME */
 .yt-click-shield-top{
   position:absolute;top:0;left:0;right:0;height:60px;
   z-index:5;background:transparent;pointer-events:auto;
@@ -183,14 +190,15 @@ body.is-landscape .yt-nav,
 <audio id="bgAudio" crossorigin="anonymous" preload="auto"></audio>
 
 <div class="app" id="appRoot">
-  <!-- TOP HEADER (REMOVED YOUTUBE TEXT, ADDED FULLSCREEN BUTTON) -->
+  <!-- TOP HEADER (OFFICIAL YOUTUBE LOGO) -->
   <div class="yt-header">
-    <button class="yt-logo-btn" onclick="switchTab('home')">
-      🎵 Aura Music
-    </button>
+    <div class="yt-logo" onclick="switchTab('home')">
+      <div class="yt-logo-icon"></div>
+      YouTube
+    </div>
     <div class="yt-hdr-actions">
-      <button class="yt-hdr-icon" onclick="toggleFullscreen()" title="Fullscreen">⛶ Fullscreen</button>
       <button class="yt-hdr-icon" onclick="focusSearch()">🔍</button>
+      <button class="yt-hdr-icon">🔔</button>
     </div>
   </div>
 
@@ -198,7 +206,7 @@ body.is-landscape .yt-nav,
   <div class="yt-search-bar">
     <div class="yt-input-box">
       <span>🔍</span>
-      <input type="text" id="searchInput" placeholder="Search song or video..." oninput="toggleClearBtn()" onkeydown="if(event.key==='Enter')doSearch()"/>
+      <input type="text" id="searchInput" placeholder="Search YouTube..." oninput="toggleClearBtn()" onkeydown="if(event.key==='Enter')doSearch()"/>
       <span class="yt-clear-btn" id="clearBtn" onclick="clearSearch()">✕</span>
     </div>
     <button class="yt-search-btn" onclick="doSearch()">Search</button>
@@ -239,14 +247,15 @@ body.is-landscape .yt-nav,
     <div style="font-weight:700;font-size:.9rem;">Now Playing</div>
     <div style="display:flex;gap:.6rem;align-items:center;">
       <button class="yt-back-btn" onclick="openSettingsModal()" title="Settings">⚙️</button>
-      <button class="yt-back-btn" onclick="toggleFullscreen()" title="Fullscreen" style="font-size:1.4rem;">⛶</button>
     </div>
   </div>
 
   <div class="yt-player-box" id="playerBox">
+    <!-- ⛶ FULLSCREEN BUTTON REPLACING YOUTUBE BUTTON IN BOTTOM RIGHT CORNER -->
+    <button class="fs-corner-btn" onclick="toggleFullscreen()">⛶</button>
     <button class="exit-fs-btn" onclick="toggleFullscreen()">🗗 Exit Fullscreen</button>
     <div class="yt-click-shield-top"></div>
-    <div class="yt-click-shield-bottom"></div>
+    <div class="yt-click-shield-bottom" onclick="toggleFullscreen()"></div>
     <div id="ytPlayerContainer"></div>
 
     <div class="lock-screen-overlay" id="lockOverlay">
@@ -442,14 +451,13 @@ function openWatch(id, title, artist, thumb) {
     ytPlayer.loadVideoById(id);
   }
 
-  // Pre-load audio stream for background audio mode & MediaSession
   const bgAudio = document.getElementById('bgAudio');
   bgAudio.src = `${API}/api/download?videoId=${encodeURIComponent(id)}&format=mp3`;
   
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: title,
-      artist: artist || 'Aura Player',
+      artist: artist || 'YouTube',
       artwork: [{ src: thumb, sizes: '512x512', type: 'image/jpeg' }]
     });
     navigator.mediaSession.setActionHandler('play', () => bgAudio.play());
@@ -537,7 +545,6 @@ function toggleBackgroundPlay() {
     btn.classList.remove('audio-accent');
     btn.textContent = '🎧 Background Play';
   } else {
-    // Pause YouTube video iframe and trigger native background audio stream
     if(ytPlayer && ytPlayer.pauseVideo) {
       try { ytPlayer.pauseVideo(); } catch(e){}
     }
@@ -547,7 +554,6 @@ function toggleBackgroundPlay() {
       btn.classList.add('audio-accent');
       btn.textContent = '⏸ Playing in Background';
     }).catch(e => {
-      // Direct user tap retry
       bgAudio.play();
       isBgPlaying = true;
       btn.classList.add('audio-accent');
