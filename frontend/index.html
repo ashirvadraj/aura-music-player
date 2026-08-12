@@ -611,6 +611,17 @@ function fmtSec(sec) {
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
+// Prevent external YouTube/Chrome window popups
+window.open = function() { return null; };
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a');
+  if(a && a.href && (a.href.includes('youtube.com') || a.href.includes('youtu.be'))) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }
+}, true);
+
 window.onload = () => {};
 </script>
 
