@@ -359,14 +359,17 @@ function triggerDownload(format) {
 
   const dlUrl = `${API}/api/download?videoId=${encodeURIComponent(currentVideo.id)}&title=${encodeURIComponent(currentVideo.title)}&format=${format}`;
   
-  // Anchor download trigger
-  const a = document.createElement('a');
-  a.href = dlUrl;
-  a.download = `${currentVideo.title}.${format}`;
-  a.target = '_self';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+    window.Capacitor.Plugins.Browser.open({ url: dlUrl });
+  } else {
+    const a = document.createElement('a');
+    a.href = dlUrl;
+    a.download = `${currentVideo.title}.${format}`;
+    a.target = '_self';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
 }
 
 // 📱 HARDWARE BACK BUTTON HANDLER (2 Backs to Exit)
