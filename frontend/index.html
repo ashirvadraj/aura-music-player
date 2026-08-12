@@ -29,7 +29,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
 .yt-hdr-actions{display:flex;align-items:center;gap:1.2rem;}
 .yt-hdr-icon{font-size:1.2rem;cursor:pointer;color:var(--text);}
 
-/* ── SEARCH BAR ── */
+/* ── SEARCH BAR WITH CLEAR BUTTON ── */
 .yt-search-bar{
   padding:.6rem 1rem;background:var(--bg);border-bottom:1px solid var(--border);
   display:flex;gap:.5rem;align-items:center;flex-shrink:0;
@@ -39,6 +39,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
   padding:.4rem 1rem;display:flex;align-items:center;gap:.6rem;
 }
 .yt-input-box input{flex:1;background:none;border:none;outline:none;color:#fff;font-size:.95rem;}
+.yt-clear-btn{color:var(--muted);font-size:1.1rem;cursor:pointer;display:none;padding:0 .2rem;}
 .yt-search-btn{background:#222;border:1px solid #303030;border-radius:20px;color:#fff;padding:.45rem 1rem;font-weight:500;cursor:pointer;}
 
 /* ── FEED / SCROLL ── */
@@ -74,11 +75,18 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
   position:fixed;inset:0;z-index:200;background:var(--bg);
   display:none;flex-direction:column;width:100%;height:100%;overflow-y:auto;
 }
-.yt-player-box{width:100%;aspect-ratio:16/9;background:#000;position:sticky;top:0;z-index:10;}
+.yt-player-box{width:100%;aspect-ratio:16/9;background:#000;position:sticky;top:0;z-index:10;overflow:hidden;}
 .yt-player-box.fullscreen{
   position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;
   z-index:99999!important;aspect-ratio:unset!important;
 }
+
+/* SHIELD OVERLAY TO STOP YOUTUBE LOGO REDIRECTING TO CHROME */
+.yt-click-shield{
+  position:absolute;top:0;left:0;right:0;height:45px;
+  z-index:2;background:transparent;pointer-events:auto;
+}
+
 #ytPlayerContainer{width:100%;height:100%;border:none;}
 
 .yt-watch-topbar{
@@ -119,7 +127,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
   padding:1rem;font-size:1rem;font-weight:600;display:flex;align-items:center;justify-content:space-between;cursor:pointer;
 }
 
-/* ── HIDDEN AUDIO ELEMENT FOR BACKGROUND PLAY ── */
 #bgAudio{display:none;}
 </style>
 </head>
@@ -144,7 +151,8 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
   <div class="yt-search-bar">
     <div class="yt-input-box">
       <span>🔍</span>
-      <input type="text" id="searchInput" placeholder="Search YouTube..." onkeydown="if(event.key==='Enter')doSearch()"/>
+      <input type="text" id="searchInput" placeholder="Search YouTube..." oninput="toggleClearBtn()" onkeydown="if(event.key==='Enter')doSearch()"/>
+      <span class="yt-clear-btn" id="clearBtn" onclick="clearSearch()">✕</span>
     </div>
     <button class="yt-search-btn" onclick="doSearch()">Search</button>
   </div>
@@ -152,7 +160,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
   <!-- VIDEO FEED -->
   <div class="yt-feed" id="videoFeed">
     <div style="text-align:center;padding:3rem 1rem;color:#888;">
-      Search any song or video above
+      Type any song or video name to search
     </div>
   </div>
 
@@ -186,6 +194,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
   </div>
 
   <div class="yt-player-box" id="playerBox">
+    <div class="yt-click-shield"></div>
     <div id="ytPlayerContainer"></div>
   </div>
 
@@ -242,12 +251,33 @@ function onYouTubeIframeAPIReady() {
   ytPlayer = new YT.Player('ytPlayerContainer', {
     height: '100%',
     width: '100%',
-    playerVars: { 'autoplay': 1, 'controls': 1, 'rel': 0, 'playsinline': 1 }
+    playerVars: {
+      'autoplay': 1,
+      'controls': 1,
+      'rel': 0,
+      'playsinline': 1,
+      'modestbranding': 1,
+      'enablejsapi': 1,
+      'fs': 0
+    }
   });
 }
 
 function focusSearch() {
   document.getElementById('searchInput').focus();
+}
+
+function toggleClearBtn() {
+  const input = document.getElementById('searchInput');
+  const btn = document.getElementById('clearBtn');
+  btn.style.display = input.value.trim().length > 0 ? 'inline' : 'none';
+}
+
+function clearSearch() {
+  const input = document.getElementById('searchInput');
+  input.value = '';
+  toggleClearBtn();
+  input.focus();
 }
 
 async function doSearch() {
@@ -305,8 +335,8 @@ function openWatch(id, title, artist, thumb) {
 
 function closeWatch() {
   document.getElementById('watchScreen').style.display = 'none';
-  if(ytPlayer && ytPlayer.pauseVideo) {
-    ytPlayer.pauseVideo();
+  if(ytPlayer && ytPlayer.stopVideo) {
+    try { ytPlayer.stopVideo(); } catch(e){}
   }
   const pb = document.getElementById('playerBox');
   pb.classList.remove('fullscreen');
@@ -317,7 +347,7 @@ function toggleFullscreen() {
   pb.classList.toggle('fullscreen');
 }
 
-// 🎧 BACKGROUND AUDIO PLAYBACK MODE
+// 🎧 TRUE BACKGROUND AUDIO PLAYBACK WITH MEDIA SESSION API
 function toggleBackgroundPlay() {
   const bgAudio = document.getElementById('bgAudio');
   const btn = document.getElementById('bgPlayBtn');
@@ -330,17 +360,30 @@ function toggleBackgroundPlay() {
     btn.classList.remove('audio-accent');
     btn.textContent = '🎧 Background Play';
   } else {
-    // Stop YouTube video player and play audio via native HTML5 <audio>
-    if(ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+    if(ytPlayer && ytPlayer.pauseVideo) {
+      try { ytPlayer.pauseVideo(); } catch(e){}
+    }
 
     const streamUrl = `${API}/api/stream?q=${encodeURIComponent(currentVideo.title)}`;
     bgAudio.src = streamUrl;
+
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentVideo.title,
+        artist: currentVideo.artist || 'YouTube',
+        artwork: [{ src: currentVideo.thumb, sizes: '512x512', type: 'image/jpeg' }]
+      });
+
+      navigator.mediaSession.setActionHandler('play', () => bgAudio.play());
+      navigator.mediaSession.setActionHandler('pause', () => bgAudio.pause());
+    }
+
     bgAudio.play().then(() => {
       isBgPlaying = true;
       btn.classList.add('audio-accent');
-      btn.textContent = '⏸ Playing in Background';
+      btn.textContent = '⏸ Background Audio Active';
     }).catch(e => {
-      alert('Background audio started. Keep app open or locked.');
+      alert('Playing audio in background...');
     });
   }
 }
@@ -372,7 +415,7 @@ function triggerDownload(format) {
   }
 }
 
-// 📱 HARDWARE BACK BUTTON HANDLER (2 Backs to Exit)
+// 📱 HARDWARE BACK BUTTON HANDLER (Robust 2-Backs to Exit)
 function handleHardwareBack() {
   const dlModal = document.getElementById('dlModal');
   const watchScreen = document.getElementById('watchScreen');
@@ -391,11 +434,10 @@ function handleHardwareBack() {
     return true;
   }
 
-  // 2 Backs gesture
   backPressCount++;
   if(backPressCount === 1) {
     setTimeout(() => { backPressCount = 0; }, 2000);
-    return true; // consumed first back
+    return true;
   } else if(backPressCount >= 2) {
     if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
       window.Capacitor.Plugins.App.exitApp();
@@ -405,7 +447,6 @@ function handleHardwareBack() {
   return false;
 }
 
-// Listen to Capacitor native back button
 document.addEventListener('DOMContentLoaded', () => {
   if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
     window.Capacitor.Plugins.App.addListener('backButton', () => {
@@ -425,10 +466,8 @@ function fmtSec(sec) {
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-window.onload = () => {
-  document.getElementById('searchInput').value = 'Tere bin';
-  doSearch();
-};
+// Search bar is completely empty on load — no pre-filled text!
+window.onload = () => {};
 </script>
 
 </body>
