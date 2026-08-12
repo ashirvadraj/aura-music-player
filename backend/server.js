@@ -116,17 +116,63 @@ app.get('/api/search/spotify', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
+// ROUTE 3.5: JIOSAAVN SEARCH
+// ─────────────────────────────────────────────
+app.get('/api/search/saavn', async (req, res) => {
+  const { q } = req.query;
+  if (!q) return res.status(400).json({ error: 'Missing query' });
+  try {
+    const url = `https://www.jiosaavn.com/api.php?__call=search.getResults&_format=json&_marker=0&api_version=4&n=20&q=${encodeURIComponent(q)}`;
+    const r = await fetch(url);
+    const data = await r.json();
+    const results = (data.results || []).map(t => ({
+      id: t.id,
+      title: t.title,
+      artist: t.more_info?.primary_artists || t.subtitle || 'Unknown',
+      album: t.more_info?.album || '',
+      duration: parseInt(t.more_info?.duration || '180', 10),
+      thumbnail: t.image ? t.image.replace('150x150', '500x500') : '',
+      source: 'saavn',
+      directStreamUrl: t.more_info?.vlink || ''
+    }));
+    res.json({ results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─────────────────────────────────────────────
 // ROUTE 4: FULL SONG STREAM (HTTP 206 Range support)
 // ─────────────────────────────────────────────
 app.get('/api/stream', async (req, res) => {
-  const { q, videoId } = req.query;
-  if (!q && !videoId) return res.status(400).json({ error: 'Missing query or videoId' });
+  const { q, videoId, directUrl } = req.query;
+  if (!q && !videoId && !directUrl) return res.status(400).json({ error: 'Missing query, videoId or directUrl' });
 
+  // 1. Direct stream URL fast-path (e.g. JioSaavn MP3)
+  if (directUrl) {
+    return res.redirect(directUrl);
+  }
+
+  // 2. JioSaavn search fast-path for query
+  if (q && !videoId) {
+    try {
+      const saavnRes = await fetch(`https://www.jiosaavn.com/api.php?__call=search.getResults&_format=json&_marker=0&api_version=4&n=1&q=${encodeURIComponent(q)}`);
+      const saavnData = await saavnRes.json();
+      const firstSong = saavnData.results && saavnData.results[0];
+      if (firstSong && firstSong.more_info && firstSong.more_info.vlink) {
+        console.log(`[Stream] JioSaavn match found for "${q}": ${firstSong.more_info.vlink}`);
+        return res.redirect(firstSong.more_info.vlink);
+      }
+    } catch (sErr) {
+      console.log(`[Stream] JioSaavn fallback error: ${sErr.message}`);
+    }
+  }
+
+  // 3. YouTube yt-dlp fallback
   const searchTarget = videoId
     ? `https://www.youtube.com/watch?v=${videoId}`
     : `ytsearch1:${q} official audio`;
 
-  // Step 1: Get direct stream URL with Android player client to avoid datacenter IP blocks
   execFile(YTDLP, [
     ...YTDLP_ARGS_PREFIX,
     searchTarget,
@@ -156,8 +202,7 @@ app.get('/api/stream', async (req, res) => {
       const streamRes = await fetch(streamUrl, { headers: fetchHeaders, signal: controller.signal });
       clearTimeout(timeout);
 
-      // ── HTTP 206 Range support ──
-      res.status(streamRes.status); // 206 or 200
+      res.status(streamRes.status);
       const headersToForward = [
         'content-type', 'content-length', 'content-range',
         'accept-ranges', 'cache-control'
@@ -230,11 +275,35 @@ app.get('/api/stream-info', (req, res) => {
 // ─────────────────────────────────────────────
 // ROUTE 6: DOWNLOAD (MP3 or MP4)
 // ─────────────────────────────────────────────
-const fs = require('fs');
-app.get('/api/download', (req, res) => {
-  const { q, videoId, format, quality, title } = req.query;
-  if (!q && !videoId) return res.status(400).json({ error: 'Missing query' });
+app.get('/api/download', async (req, res) => {
+  const { q, videoId, format, quality, title, directUrl } = req.query;
+  if (!q && !videoId && !directUrl) return res.status(400).json({ error: 'Missing query' });
 
+  const fileName = `${(title || q || 'track').replace(/[/\\?%*:|"<>]/g, '_')}.${format || 'mp3'}`;
+
+  // 1. Direct stream URL fast download (e.g. JioSaavn MP3)
+  let downloadUrl = directUrl;
+  if (!downloadUrl && q && !videoId) {
+    try {
+      const saavnRes = await fetch(`https://www.jiosaavn.com/api.php?__call=search.getResults&_format=json&_marker=0&api_version=4&n=1&q=${encodeURIComponent(q)}`);
+      const saavnData = await saavnRes.json();
+      const firstSong = saavnData.results && saavnData.results[0];
+      if (firstSong && firstSong.more_info && firstSong.more_info.vlink) {
+        downloadUrl = firstSong.more_info.vlink;
+      }
+    } catch (sErr) {}
+  }
+
+  if (downloadUrl) {
+    try {
+      const fileRes = await fetch(downloadUrl);
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('Content-Type', 'audio/mpeg');
+      return fileRes.body.pipe(res);
+    } catch (dErr) {}
+  }
+
+  // 2. Fallback yt-dlp download
   const searchTarget = videoId
     ? `https://www.youtube.com/watch?v=${videoId}`
     : `ytsearch1:${q} official audio`;
