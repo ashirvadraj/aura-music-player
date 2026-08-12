@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
-<title>YouTube</title>
+<title>Aura Player</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -17,7 +17,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
 
 .app{height:100%;width:100%;display:flex;flex-direction:column;position:relative;background:var(--bg);}
 
-/* ── TOP HEADER WITH STATUS BAR PADDING (STOPS OVERLAPPING CLOCK/BATTERY) ── */
+/* ── TOP HEADER (REMOVED YOUTUBE TEXT, ADDED FULLSCREEN & SEARCH BUTTONS) ── */
 .yt-header{
   height:calc(52px + var(--safe-top));
   padding-top:var(--safe-top);
@@ -25,12 +25,13 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
   display:flex;align-items:center;justify-content:space-between;
   background:var(--bg);border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;z-index:10;
 }
-.yt-logo{display:flex;align-items:center;gap:.4rem;font-weight:700;font-size:1.2rem;letter-spacing:-.5px;}
-.yt-logo-icon{width:30px;height:22px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;}
-.yt-logo-icon::after{content:'';border-style:solid;border-width:5px 0 5px 9px;border-color:transparent transparent transparent #fff;margin-left:2px;}
+.yt-logo-btn{
+  background:none;border:none;color:#fff;font-weight:700;font-size:1.1rem;
+  display:flex;align-items:center;gap:.4rem;cursor:pointer;
+}
 
-.yt-hdr-actions{display:flex;align-items:center;gap:1.2rem;}
-.yt-hdr-icon{font-size:1.2rem;cursor:pointer;color:var(--text);}
+.yt-hdr-actions{display:flex;align-items:center;gap:1rem;}
+.yt-hdr-icon{font-size:1.2rem;cursor:pointer;color:var(--text);background:none;border:none;}
 
 /* ── SEARCH BAR WITH CLEAR BUTTON ── */
 .yt-search-bar{
@@ -76,6 +77,13 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
 .yt-nav-item.active{color:#fff;font-weight:700;}
 .yt-nav-icon{font-size:1.3rem;}
 
+/* HIDE BOTTOM NAV BAR IN LANDSCAPE OR FULLSCREEN MODE SO IT NEVER GETS STUCK */
+body.is-landscape .yt-nav,
+.yt-watch-screen.is-fullscreen ~ .yt-nav,
+.app.hide-nav .yt-nav {
+  display: none !important;
+}
+
 /* ── WATCH SCREEN / PLAYER ── */
 .yt-watch-screen{
   position:fixed;inset:0;z-index:200;background:var(--bg);
@@ -102,11 +110,11 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
   z-index:99999!important;aspect-ratio:unset!important;margin:0!important;padding:0!important;
 }
 
-/* FLOATING EXIT FULLSCREEN BUTTON */
+/* FLOATING EXIT FULLSCREEN BUTTON (CLEANLY POSITIONED BELOW STATUS BAR) */
 .exit-fs-btn{
-  position:absolute;top:16px;right:16px;z-index:100000;
-  background:rgba(0,0,0,.7);color:#fff;border:1px solid rgba(255,255,255,.3);
-  border-radius:20px;padding:.4rem drop .8rem;font-size:.85rem;font-weight:700;
+  position:absolute;top:28px;left:16px;z-index:100000;
+  background:rgba(0,0,0,.85);color:#fff;border:1px solid rgba(255,255,255,.3);
+  border-radius:20px;padding:.4rem 1rem;font-size:.85rem;font-weight:700;
   display:none;align-items:center;gap:.4rem;cursor:pointer;
 }
 .yt-watch-screen.is-fullscreen .exit-fs-btn{display:flex!important;}
@@ -141,7 +149,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
 .yt-act-pill.dl-accent{background:var(--accent);font-weight:700;}
 .yt-act-pill.audio-accent{background:#a855f7;font-weight:700;}
 
-/* ── YOUTUBE MENU SHEET (REPLICA UI FROM SCREENSHOT) ── */
+/* ── YOUTUBE MENU SHEET ── */
 .yt-settings-modal{
   position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.75);
   display:none;align-items:center;justify-content:center;padding:1rem;
@@ -172,18 +180,17 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
 </head>
 <body>
 
-<audio id="bgAudio" crossorigin="anonymous"></audio>
+<audio id="bgAudio" crossorigin="anonymous" preload="auto"></audio>
 
-<div class="app">
-  <!-- TOP HEADER -->
+<div class="app" id="appRoot">
+  <!-- TOP HEADER (REMOVED YOUTUBE TEXT, ADDED FULLSCREEN BUTTON) -->
   <div class="yt-header">
-    <div class="yt-logo">
-      <div class="yt-logo-icon"></div>
-      YouTube
-    </div>
+    <button class="yt-logo-btn" onclick="switchTab('home')">
+      🎵 Aura Music
+    </button>
     <div class="yt-hdr-actions">
-      <span class="yt-hdr-icon" onclick="focusSearch()">🔍</span>
-      <span class="yt-hdr-icon">🔔</span>
+      <button class="yt-hdr-icon" onclick="toggleFullscreen()" title="Fullscreen">⛶ Fullscreen</button>
+      <button class="yt-hdr-icon" onclick="focusSearch()">🔍</button>
     </div>
   </div>
 
@@ -191,7 +198,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
   <div class="yt-search-bar">
     <div class="yt-input-box">
       <span>🔍</span>
-      <input type="text" id="searchInput" placeholder="Search YouTube..." oninput="toggleClearBtn()" onkeydown="if(event.key==='Enter')doSearch()"/>
+      <input type="text" id="searchInput" placeholder="Search song or video..." oninput="toggleClearBtn()" onkeydown="if(event.key==='Enter')doSearch()"/>
       <span class="yt-clear-btn" id="clearBtn" onclick="clearSearch()">✕</span>
     </div>
     <button class="yt-search-btn" onclick="doSearch()">Search</button>
@@ -205,7 +212,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
   </div>
 
   <!-- BOTTOM NAV BAR -->
-  <div class="yt-nav">
+  <div class="yt-nav" id="mainNav">
     <div class="yt-nav-item active" id="navHome" onclick="switchTab('home')">
       <span class="yt-nav-icon">🏠</span>
       Home
@@ -274,7 +281,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
   </div>
 </div>
 
-<!-- YOUTUBE PLAYER SETTINGS MENU SHEET (REPLICA UI FROM SCREENSHOT) -->
+<!-- YOUTUBE PLAYER SETTINGS MENU SHEET -->
 <div class="yt-settings-modal" id="settingsModal" onclick="closeSettingsModal()">
   <div class="yt-settings-sheet" onclick="event.stopPropagation()">
     <div class="yt-sheet-item" onclick="cycleQuality()">
@@ -386,7 +393,7 @@ async function doSearch() {
   if(!q) return;
 
   const feed = document.getElementById('videoFeed');
-  feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">Searching YouTube...</div>`;
+  feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">Searching videos...</div>`;
 
   try {
     const r = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
@@ -427,38 +434,51 @@ function openWatch(id, title, artist, thumb) {
   document.getElementById('wTitle').textContent = title;
   document.getElementById('wChannel').textContent = artist;
   document.getElementById('wAvatar').textContent = (artist || 'Y')[0].toUpperCase();
-  document.getElementById('watchScreen').style.display = 'flex';
+  
+  const watchScreen = document.getElementById('watchScreen');
+  watchScreen.style.display = 'flex';
 
   if(ytPlayer && ytPlayer.loadVideoById) {
     ytPlayer.loadVideoById(id);
   }
 
-  // 🎧 YOUTUBE PREMIUM FEATURE: Prepare background audio stream with MediaSession controls
+  // Pre-load audio stream for background audio mode & MediaSession
   const bgAudio = document.getElementById('bgAudio');
-  bgAudio.src = `${API}/api/stream?q=${encodeURIComponent(title)}`;
+  bgAudio.src = `${API}/api/download?videoId=${encodeURIComponent(id)}&format=mp3`;
+  
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: title,
-      artist: artist || 'YouTube',
+      artist: artist || 'Aura Player',
       artwork: [{ src: thumb, sizes: '512x512', type: 'image/jpeg' }]
     });
     navigator.mediaSession.setActionHandler('play', () => bgAudio.play());
     navigator.mediaSession.setActionHandler('pause', () => bgAudio.pause());
   }
+
+  checkAutoOrientation();
 }
 
 function closeWatch() {
-  document.getElementById('watchScreen').style.display = 'none';
+  const watchScreen = document.getElementById('watchScreen');
+  watchScreen.style.display = 'none';
+  watchScreen.classList.remove('is-fullscreen');
+  document.body.classList.remove('is-landscape');
+  document.getElementById('mainNav').style.display = 'flex';
+
   if(ytPlayer && ytPlayer.stopVideo) {
     try { ytPlayer.stopVideo(); } catch(e){}
   }
-  const ws = document.getElementById('watchScreen');
-  ws.classList.remove('is-fullscreen');
 }
 
 function toggleFullscreen() {
   const ws = document.getElementById('watchScreen');
+  if(ws.style.display !== 'flex') {
+    ws.style.display = 'flex';
+  }
   ws.classList.toggle('is-fullscreen');
+  const isFS = ws.classList.contains('is-fullscreen');
+  document.getElementById('mainNav').style.display = isFS ? 'none' : 'flex';
 }
 
 // ⚙️ YOUTUBE SETTINGS MENU SHEET FUNCTIONS
@@ -504,7 +524,7 @@ function unlockPlayerScreen() {
   document.getElementById('lockOverlay').style.display = 'none';
 }
 
-// 🎧 TRUE BACKGROUND AUDIO PLAYBACK WITH MEDIA SESSION API
+// 🎧 TRUE BACKGROUND AUDIO PLAYBACK MODE
 function toggleBackgroundPlay() {
   const bgAudio = document.getElementById('bgAudio');
   const btn = document.getElementById('bgPlayBtn');
@@ -517,30 +537,21 @@ function toggleBackgroundPlay() {
     btn.classList.remove('audio-accent');
     btn.textContent = '🎧 Background Play';
   } else {
+    // Pause YouTube video iframe and trigger native background audio stream
     if(ytPlayer && ytPlayer.pauseVideo) {
       try { ytPlayer.pauseVideo(); } catch(e){}
-    }
-
-    const streamUrl = `${API}/api/stream?q=${encodeURIComponent(currentVideo.title)}`;
-    bgAudio.src = streamUrl;
-
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentVideo.title,
-        artist: currentVideo.artist || 'YouTube',
-        artwork: [{ src: currentVideo.thumb, sizes: '512x512', type: 'image/jpeg' }]
-      });
-
-      navigator.mediaSession.setActionHandler('play', () => bgAudio.play());
-      navigator.mediaSession.setActionHandler('pause', () => bgAudio.pause());
     }
 
     bgAudio.play().then(() => {
       isBgPlaying = true;
       btn.classList.add('audio-accent');
-      btn.textContent = '⏸ Background Audio Active';
+      btn.textContent = '⏸ Playing in Background';
     }).catch(e => {
-      alert('Playing audio in background...');
+      // Direct user tap retry
+      bgAudio.play();
+      isBgPlaying = true;
+      btn.classList.add('audio-accent');
+      btn.textContent = '⏸ Playing in Background';
     });
   }
 }
@@ -562,13 +573,7 @@ function triggerDownload(format) {
   if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
     window.Capacitor.Plugins.Browser.open({ url: dlUrl });
   } else {
-    const a = document.createElement('a');
-    a.href = dlUrl;
-    a.download = `${currentVideo.title}.${format}`;
-    a.target = '_self';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    window.open(dlUrl, '_system');
   }
 }
 
@@ -584,6 +589,7 @@ function handleHardwareBack() {
   }
   if(ws.classList.contains('is-fullscreen')) {
     ws.classList.remove('is-fullscreen');
+    document.getElementById('mainNav').style.display = 'flex';
     return true;
   }
   if(dlModal.style.display === 'flex') {
@@ -627,18 +633,7 @@ function fmtSec(sec) {
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-// Prevent external YouTube/Chrome window popups
-window.open = function() { return null; };
-document.addEventListener('click', (e) => {
-  const a = e.target.closest('a');
-  if(a && a.href && (a.href.includes('youtube.com') || a.href.includes('youtu.be'))) {
-    e.preventDefault();
-    e.stopPropagation();
-    return false;
-  }
-}, true);
-
-// 🎵 TAB SWITCHING FUNCTION (Home, YouTube Music, Subscriptions, You)
+// 🎵 TAB SWITCHING FUNCTION
 async function switchTab(tab) {
   document.querySelectorAll('.yt-nav-item').forEach(el => el.classList.remove('active'));
   const feed = document.getElementById('videoFeed');
@@ -669,18 +664,36 @@ async function switchTab(tab) {
 // 🔄 AUTOMATIC LANDSCAPE ORIENTATION FULLSCREEN TOGGLE
 function checkAutoOrientation() {
   const ws = document.getElementById('watchScreen');
-  if (ws && ws.style.display === 'flex') {
-    const isLandscape = window.innerWidth > window.innerHeight;
-    if (isLandscape) {
+  const nav = document.getElementById('mainNav');
+  const isLandscape = window.innerWidth > window.innerHeight;
+
+  if (isLandscape) {
+    document.body.classList.add('is-landscape');
+    if (nav) nav.style.display = 'none';
+    if (ws && ws.style.display === 'flex') {
       ws.classList.add('is-fullscreen');
-    } else {
-      ws.classList.remove('is-fullscreen');
+    }
+  } else {
+    document.body.classList.remove('is-landscape');
+    if (ws && !ws.classList.contains('is-fullscreen')) {
+      if (nav) nav.style.display = 'flex';
     }
   }
 }
 
 window.addEventListener('resize', checkAutoOrientation);
 window.addEventListener('orientationchange', checkAutoOrientation);
+
+// Prevent external YouTube/Chrome window popups
+window.open = function() { return null; };
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a');
+  if(a && a.href && (a.href.includes('youtube.com') || a.href.includes('youtu.be'))) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }
+}, true);
 
 window.onload = () => {};
 </script>
