@@ -203,19 +203,19 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
 
   <!-- BOTTOM NAV BAR -->
   <div class="yt-nav">
-    <div class="yt-nav-item active">
+    <div class="yt-nav-item active" id="navHome" onclick="switchTab('home')">
       <span class="yt-nav-icon">🏠</span>
       Home
     </div>
-    <div class="yt-nav-item">
-      <span class="yt-nav-icon">⚡</span>
-      Shorts
+    <div class="yt-nav-item" id="navMusic" onclick="switchTab('music')">
+      <span class="yt-nav-icon">🎵</span>
+      Music
     </div>
-    <div class="yt-nav-item">
+    <div class="yt-nav-item" id="navSubs" onclick="switchTab('subs')">
       <span class="yt-nav-icon">📺</span>
       Subscriptions
     </div>
-    <div class="yt-nav-item">
+    <div class="yt-nav-item" id="navYou" onclick="switchTab('you')">
       <span class="yt-nav-icon">👤</span>
       You
     </div>
@@ -621,6 +621,50 @@ document.addEventListener('click', (e) => {
     return false;
   }
 }, true);
+
+// 🎵 TAB SWITCHING FUNCTION (Home, YouTube Music, Subscriptions, You)
+async function switchTab(tab) {
+  document.querySelectorAll('.yt-nav-item').forEach(el => el.classList.remove('active'));
+  const feed = document.getElementById('videoFeed');
+  
+  if (tab === 'home') {
+    document.getElementById('navHome').classList.add('active');
+    document.getElementById('searchInput').value = '';
+    toggleClearBtn();
+    feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">Type any song or video name to search</div>`;
+  } else if (tab === 'music') {
+    document.getElementById('navMusic').classList.add('active');
+    document.getElementById('searchInput').value = 'trending hindi songs music';
+    toggleClearBtn();
+    doSearch();
+  } else if (tab === 'subs') {
+    document.getElementById('navSubs').classList.add('active');
+    document.getElementById('searchInput').value = 'latest release music videos';
+    toggleClearBtn();
+    doSearch();
+  } else if (tab === 'you') {
+    document.getElementById('navYou').classList.add('active');
+    document.getElementById('searchInput').value = 'top hit songs 2026';
+    toggleClearBtn();
+    doSearch();
+  }
+}
+
+// 🔄 AUTOMATIC LANDSCAPE ORIENTATION FULLSCREEN TOGGLE
+function checkAutoOrientation() {
+  const ws = document.getElementById('watchScreen');
+  if (ws && ws.style.display === 'flex') {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    if (isLandscape) {
+      ws.classList.add('is-fullscreen');
+    } else {
+      ws.classList.remove('is-fullscreen');
+    }
+  }
+}
+
+window.addEventListener('resize', checkAutoOrientation);
+window.addEventListener('orientationchange', checkAutoOrientation);
 
 window.onload = () => {};
 </script>
