@@ -65,13 +65,16 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
 
 /* ── BOTTOM NAV BAR ── */
 .yt-nav{
-  position:fixed;bottom:0;left:0;right:0;height:52px;
+  position:fixed;bottom:0;left:0;right:0;height:56px;
   background:#0f0f0f;border-top:1px solid rgba(255,255,255,.1);
-  display:flex;align-items:center;justify-content:space-around;z-index:90;
+  display:flex;align-items:center;justify-content:space-around;z-index:999;
 }
-.yt-nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.65rem;color:var(--muted);cursor:pointer;}
-.yt-nav-item.active{color:#fff;}
-.yt-nav-icon{font-size:1.2rem;}
+.yt-nav-item{
+  flex:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;font-size:.7rem;color:var(--muted);cursor:pointer;pointer-events:auto;user-select:none;
+}
+.yt-nav-item.active{color:#fff;font-weight:700;}
+.yt-nav-icon{font-size:1.3rem;}
 
 /* ── WATCH SCREEN / PLAYER ── */
 .yt-watch-screen{
@@ -428,6 +431,19 @@ function openWatch(id, title, artist, thumb) {
 
   if(ytPlayer && ytPlayer.loadVideoById) {
     ytPlayer.loadVideoById(id);
+  }
+
+  // 🎧 YOUTUBE PREMIUM FEATURE: Prepare background audio stream with MediaSession controls
+  const bgAudio = document.getElementById('bgAudio');
+  bgAudio.src = `${API}/api/stream?q=${encodeURIComponent(title)}`;
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: title,
+      artist: artist || 'YouTube',
+      artwork: [{ src: thumb, sizes: '512x512', type: 'image/jpeg' }]
+    });
+    navigator.mediaSession.setActionHandler('play', () => bgAudio.play());
+    navigator.mediaSession.setActionHandler('pause', () => bgAudio.pause());
   }
 }
 
