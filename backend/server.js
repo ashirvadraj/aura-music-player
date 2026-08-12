@@ -88,41 +88,45 @@ app.get('/api/search/youtube', async (req, res) => {
 // ─────────────────────────────────────────────
 // ROUTE 2: DOWNLOAD (MP3 / MP4)
 // ─────────────────────────────────────────────
+// ROUTE 2: DOWNLOAD (MP3 / MP4 Instant Pipe Stream)
+// ─────────────────────────────────────────────
 app.get('/api/download', (req, res) => {
   const { videoId, q, format, title } = req.query;
   if (!videoId && !q) return res.status(400).json({ error: 'Missing videoId or q' });
 
   const isMp4 = (format === 'mp4');
-  const ext = isMp4 ? 'mp4' : 'mp3';
+  const ext = isMp4 ? 'mp4' : 'm4a';
+  const mime = isMp4 ? 'video/mp4' : 'audio/mp4';
   const sanitizeTitle = (title || videoId || 'youtube_track').replace(/[/\\?%*:|"<>]/g, '_');
   const fileName = `${sanitizeTitle}.${ext}`;
 
   const target = videoId ? `https://www.youtube.com/watch?v=${videoId}` : `ytsearch1:${q}`;
-  const tempFile = path.join(__dirname, `temp_${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`);
+  const formatArg = isMp4 ? 'best[ext=mp4]/best' : 'ba[ext=m4a]/ba/bestaudio';
 
-  const formatArg = isMp4 ? 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best' : 'ba[ext=m4a]/ba/bestaudio';
-  const postArgs = isMp4 ? [] : ['-x', '--audio-format', 'mp3', '--audio-quality', '0'];
+  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+  res.setHeader('Content-Type', mime);
 
   const ytdlpArgs = [
     ...YTDLP_ARGS_PREFIX,
     target,
     '--extractor-args', 'youtube:player_client=android,web',
     '-f', formatArg,
-    ...postArgs,
-    '-o', tempFile,
+    '-o', '-',
     '--no-playlist',
-    '--no-warnings'
+    '--no-warnings',
+    '--quiet'
   ];
 
-  execFile(YTDLP, ytdlpArgs, { timeout: 120000 }, (err) => {
-    if (err || !fs.existsSync(tempFile)) {
-      console.error(`[Download Error]:`, err);
-      return res.status(502).json({ error: 'Download failed' });
-    }
+  const proc = spawn(YTDLP, ytdlpArgs);
+  proc.stdout.pipe(res);
 
-    res.download(tempFile, fileName, (dlErr) => {
-      if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
-    });
+  req.on('close', () => {
+    proc.kill();
+  });
+
+  proc.on('error', (err) => {
+    console.error(`[Download Error]:`, err);
+    if (!res.headersSent) res.status(500).json({ error: 'Download failed' });
   });
 });
 
