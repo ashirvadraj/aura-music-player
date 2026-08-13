@@ -565,6 +565,8 @@ let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic', '
 let searchAbortController = null;
 let seekTimer = null;
 let isUserPaused = false;
+let initialPinchDist = 0;
+let initialScale = 1.0;
 
 // CLIENT SIDE SEARCH CACHE (INSTANT 0ms RESPONSES)
 const clientSearchCache = new Map();
@@ -782,7 +784,7 @@ function updateCurrentLoveUI() {
   }
 }
 
-// ── GUARANTEED 100% WORKING ZOOM WRAPPER SYSTEM ──
+// ── GUARANTEED 100% WORKING ZOOM WRAPPER & 2-FINGER PINCH ZOOM SYSTEM ──
 let zoomScale = 1.0;
 
 function setZoomLevel(scaleVal, e) {
@@ -821,6 +823,37 @@ function cycleZoomLevel(e) {
 document.addEventListener('DOMContentLoaded', () => {
   loadLovedSongs();
   checkResumeBanner();
+
+  // 2-FINGER PINCH TO ZOOM LISTENER (DOES NOT BLOCK 1-FINGER YOUTUBE TOUCHES)
+  const watchScreen = document.getElementById('watchScreen');
+  if (watchScreen) {
+    watchScreen.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        initialPinchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        initialScale = zoomScale;
+      }
+    }, { passive: true });
+
+    watchScreen.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && initialPinchDist > 0) {
+        const currentDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const factor = currentDist / initialPinchDist;
+        setZoomLevel(initialScale * factor);
+      }
+    }, { passive: true });
+
+    watchScreen.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) {
+        initialPinchDist = 0;
+      }
+    }, { passive: true });
+  }
 });
 
 // ── YOUTUBE PLAYER INIT WITH 100% ORIGINAL YOUTUBE CONTROLS ──
