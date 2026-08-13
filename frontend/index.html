@@ -644,7 +644,16 @@ function hideSuggestions() {
 
 // ── FULL NATIVE ANDROID SYSTEM NOTIFICATION SHADE & LOCK SCREEN MEDIA CARD ──
 function setupMediaSession() {
-  if (!('mediaSession' in navigator) || !currentVideo) return;
+  if (!currentVideo) return;
+
+  // DYNAMICALLY UPDATE NATIVE ANDROID NOTIFICATION CARD TITLE & ARTIST!
+  if (window.AndroidNative && window.AndroidNative.updateNotification) {
+    try {
+      window.AndroidNative.updateNotification(currentVideo.title || 'Aura Track', currentVideo.artist || 'Aura Music Player');
+    } catch(e){}
+  }
+
+  if (!('mediaSession' in navigator)) return;
   try {
     const thumbUrl = currentVideo.thumb || currentVideo.thumbnail || '';
     
