@@ -594,20 +594,20 @@ function renderFeed(list) {
   }).join('');
 }
 
-// ── TRACK CLICK DISPATCHER (VIDEO VS PURE MP3 AUDIO) ──
+// ── TRACK CLICK DISPATCHER ──
 function handleTrackClick(id, title, artist, thumb) {
   currentVideo = { id, title, artist, thumb };
 
   if (currentMode === 'spotify' || currentMode === 'applemusic') {
-    // OPEN PURE MP3 AUDIO PLAYER! NO VIDEO!
+    // PURE MP3 AUDIO PLAYER FOR SPOTIFY & APPLE MUSIC (NO VIDEO PLAYER!)
     openAudioPlayer(id, title, artist, thumb);
   } else {
-    // OPEN VIDEO PLAYER FOR YOUTUBE & YT MUSIC
+    // VIDEO PLAYER FOR YOUTUBE & YT MUSIC
     openWatch(id, title, artist, thumb);
   }
 }
 
-// ── PURE MP3 AUDIO PLAYER ──
+// ── PURE MP3 AUDIO PLAYER (SPOTIFY & APPLE MUSIC) ──
 function openAudioPlayer(id, title, artist, thumb) {
   document.getElementById('audioTrackTitle').textContent = title;
   document.getElementById('audioTrackArtist').textContent = artist;
@@ -623,11 +623,10 @@ function openAudioPlayer(id, title, artist, thumb) {
   const aps = document.getElementById('audioPlayerScreen');
   aps.style.display = 'flex';
 
-  // Stop video player if playing
   if (ytPlayer && ytPlayer.stopVideo) { try { ytPlayer.stopVideo(); } catch(e){} }
 
-  // Load and play MP3 audio directly!
-  mainAudio.src = `${API}/api/download?videoId=${encodeURIComponent(id)}&format=mp3`;
+  // 302 DIRECT AUDIO STREAM LINK (INSTANT MP3 AUDIO PLAYBACK!)
+  mainAudio.src = `${API}/api/stream/audio?videoId=${encodeURIComponent(id)}`;
   mainAudio.load();
   mainAudio.play().then(() => {
     document.getElementById('audioMainPlayBtn').textContent = '⏸';
@@ -671,7 +670,7 @@ function openWatch(id, title, artist, thumb) {
 
   if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById(id);
 
-  mainAudio.src = `${API}/api/download?videoId=${encodeURIComponent(id)}&format=mp3`;
+  mainAudio.src = `${API}/api/stream/audio?videoId=${encodeURIComponent(id)}`;
 
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
@@ -756,30 +755,18 @@ function closeDlModal() {
 function triggerDownload(format) {
   if (!currentVideo) return;
   closeDlModal();
-  showToast(`Downloading ${format.toUpperCase()} track...`);
+  showToast(`Opening ${format.toUpperCase()} download...`);
 
-  const dlUrl = `${API}/api/download?videoId=${encodeURIComponent(currentVideo.id)}&title=${encodeURIComponent(currentVideo.title)}&format=${format}`;
+  const dlUrl = `${API}/api/download?videoId=${encodeURIComponent(currentVideo.id)}&format=${format}`;
 
   try {
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
       window.Capacitor.Plugins.Browser.open({ url: dlUrl });
     } else {
-      const a = document.createElement('a');
-      a.href = dlUrl;
-      a.download = `${currentVideo.title}.${format}`;
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      window.open(dlUrl, '_system');
     }
   } catch(e) {
-    const a = document.createElement('a');
-    a.href = dlUrl;
-    a.download = `${currentVideo.title}.${format}`;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    window.open(dlUrl, '_system');
   }
 }
 
@@ -917,7 +904,18 @@ window.addEventListener('resize', checkAutoOrientation);
 window.addEventListener('orientationchange', checkAutoOrientation);
 
 // ── PREVENT CHROME REDIRECTS ──
-window.open = function() { return null; };
+window.open = function(url, target) {
+  if (target === '_system' && url) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    return null;
+  }
+  return null;
+};
 document.addEventListener('click', (e) => {
   const a = e.target.closest('a');
   if (a && a.href && (a.href.includes('youtube.com') || a.href.includes('youtu.be'))) {
