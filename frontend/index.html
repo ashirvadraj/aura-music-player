@@ -200,16 +200,13 @@ input, textarea, [contenteditable="true"] {
   width:100%!important;height:100%!important;border:none!important;
 }
 
-/* TOUCH OVERLAY GESTURE LAYER OVER YOUTUBE IFRAME FOR FULLSCREEN LANDSCAPE ONLY */
+/* 2-FINGER TOUCH PINCH-TO-ZOOM OVERLAY LAYER ABOVE IFRAME */
 .touch-overlay-gesture {
   position: absolute; inset: 0; z-index: 8;
-  background: transparent; touch-action: none; display: none;
-}
-body.is-landscape .touch-overlay-gesture {
-  display: block !important;
+  background: transparent; touch-action: none; display: block !important;
 }
 
-/* ── SLEEK IMMERSIVE FULLSCREEN TOUCH OVERLAY (SHOWS ONLY IN LANDSCAPE FULLSCREEN WHEN TAPPED) ── */
+/* ── SLEEK IMMERSIVE FULLSCREEN TOUCH CONTROL OVERLAY (SHOWS ONLY IN LANDSCAPE FULLSCREEN WHEN TAPPED) ── */
 .fullscreen-touch-overlay {
   position: absolute; inset: 0; z-index: 25;
   background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
@@ -347,6 +344,17 @@ body.is-landscape .fullscreen-touch-overlay {
 .yt-act-pill.dl-accent{background:var(--accent);font-weight:700;}
 .yt-act-pill.love-pill-btn.is-loved{background:#ff2d55;color:#fff;font-weight:700;}
 
+/* ZOOM CONTROLS IN ACTIONS BAR */
+.zoom-controls-group{
+  display:flex;align-items:center;gap:.4rem;background:#181818;
+  border:1px solid #333;border-radius:18px;padding:2px 8px;flex-shrink:0;
+}
+.zoom-btn-chip{
+  background:none;border:none;color:#aaa;font-size:.78rem;font-weight:600;
+  padding:4px 8px;border-radius:12px;cursor:pointer;
+}
+.zoom-btn-chip.active{background:#ff0000;color:#fff;}
+
 /* HIDE ZOOM IN AUDIO MODES */
 body.audio-mode #zoomToggleBtn,
 body.audio-mode .zoom-controls-group { display: none !important; }
@@ -460,6 +468,7 @@ body.audio-mode .zoom-controls-group { display: none !important; }
     <div style="font-weight:700;font-size:.9rem;" id="nowPlayingText">Now Playing</div>
     <div style="display:flex;gap:.6rem;align-items:center;">
       <button class="yt-back-btn" id="watchLoveBtn" onclick="toggleCurrentLove()" title="Love Song" style="font-size:1.2rem;">♡</button>
+      <button class="yt-back-btn" id="zoomToggleBtn" onclick="cycleZoomLevel()" title="Screen Zoom" style="font-size:.85rem;font-weight:700;background:#222;border-radius:12px;padding:3px 8px;">🔎 Fit 100%</button>
       <button class="yt-back-btn" onclick="toggleFullscreen()" title="Fullscreen" style="font-size:1.3rem;">⛶</button>
     </div>
   </div>
@@ -469,6 +478,7 @@ body.audio-mode .zoom-controls-group { display: none !important; }
       <div id="ytPlayerContainer"></div>
     </div>
 
+    <!-- 2-FINGER PINCH TO ZOOM TOUCH OVERLAY -->
     <div class="touch-overlay-gesture" id="touchGestureOverlay" onclick="handleFullscreenTap(event)"></div>
 
     <!-- FULLSCREEN LANDSCAPE TOUCH OVERLAY (SHOWS ONLY IN LANDSCAPE FULLSCREEN WHEN TAPPED) -->
@@ -544,6 +554,16 @@ body.audio-mode .zoom-controls-group { display: none !important; }
 
     <div class="yt-actions-scroll">
       <button class="yt-act-pill love-pill-btn" id="watchLovePill" onclick="toggleCurrentLove()">❤️ Love Song</button>
+      
+      <!-- ZOOM PRESET CHIPS BAR -->
+      <div class="zoom-controls-group">
+        <span style="font-size:.75rem;color:#aaa;font-weight:700;margin-right:2px;">🔎 Zoom:</span>
+        <button class="zoom-btn-chip active" id="zChip100" onclick="setZoomLevel(1.0)">100%</button>
+        <button class="zoom-btn-chip" id="zChip125" onclick="setZoomLevel(1.25)">125%</button>
+        <button class="zoom-btn-chip" id="zChip150" onclick="setZoomLevel(1.50)">150%</button>
+        <button class="zoom-btn-chip" id="zChip200" onclick="setZoomLevel(2.00)">200%</button>
+      </div>
+
       <button class="yt-act-pill dl-accent" onclick="openDlModal()">⬇️ Download MP3 Song</button>
       <button class="yt-act-pill">↗️ Share</button>
     </div>
@@ -577,7 +597,7 @@ let seekTimer = null;
 // CLIENT SIDE SEARCH CACHE (INSTANT 0ms RESPONSES)
 const clientSearchCache = new Map();
 
-// ── FULLSCREEN TOUCH OVERLAY, CC, SOUND & QUALITY CONTROLS (LANDSCAPE FULLSCREEN ONLY) ──
+// ── FULLSCREEN TOUCH OVERLAY, CC, SOUND & QUALITY CONTROLS ──
 let fsOverlayTimer = null;
 let isCcOn = false;
 
@@ -740,7 +760,7 @@ function updateCurrentLoveUI() {
   }
 }
 
-// ── GUARANTEED 100% WORKING ZOOM WRAPPER SYSTEM ──
+// ── GUARANTEED 100% WORKING ZOOM WRAPPER SYSTEM (PORTRAIT & LANDSCAPE 2-FINGER PINCH) ──
 let zoomScale = 1.0;
 let initialPinchDist = 0;
 let initialScale = 1.0;
@@ -755,6 +775,17 @@ function setZoomLevel(scaleVal, e) {
     const baseScale = isLandscape ? 1.35 : 1.0;
     wrapper.style.transform = `scale(${baseScale * zoomScale})`;
   }
+
+  // Update button chips UI
+  document.querySelectorAll('.zoom-btn-chip').forEach(btn => btn.classList.remove('active'));
+  if (scaleVal === 1.0) document.getElementById('zChip100').classList.add('active');
+  else if (scaleVal === 1.25) document.getElementById('zChip125').classList.add('active');
+  else if (scaleVal === 1.50) document.getElementById('zChip150').classList.add('active');
+  else if (scaleVal === 2.00) document.getElementById('zChip200').classList.add('active');
+
+  const pct = Math.round(zoomScale * 100);
+  document.getElementById('zoomToggleBtn').textContent = `🔎 ${pct}%`;
+  showToast(`Screen Zoom: ${pct}%`);
 }
 
 function cycleZoomLevel(e) {
@@ -765,7 +796,7 @@ function cycleZoomLevel(e) {
   else setZoomLevel(1.0);
 }
 
-// SETUP PINCH GESTURE ON TOUCH OVERLAY GESTURE LAYER ABOVE IFRAME
+// SETUP 2-FINGER PINCH GESTURE ON TOUCH OVERLAY LAYER IN BOTH PORTRAIT & LANDSCAPE
 document.addEventListener('DOMContentLoaded', () => {
   loadLovedSongs();
 
