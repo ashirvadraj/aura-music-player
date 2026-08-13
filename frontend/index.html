@@ -200,22 +200,28 @@ input, textarea, [contenteditable="true"] {
   width:100%!important;height:100%!important;border:none!important;
 }
 
-/* TOUCH OVERLAY GESTURE LAYER OVER YOUTUBE IFRAME */
+/* TOUCH OVERLAY GESTURE LAYER OVER YOUTUBE IFRAME FOR FULLSCREEN LANDSCAPE ONLY */
 .touch-overlay-gesture {
   position: absolute; inset: 0; z-index: 8;
-  background: transparent; touch-action: none; display: block;
+  background: transparent; touch-action: none; display: none;
+}
+body.is-landscape .touch-overlay-gesture {
+  display: block !important;
 }
 
-/* ── SLEEK IMMERSIVE FULLSCREEN TOUCH CONTROL OVERLAY ── */
+/* ── SLEEK IMMERSIVE FULLSCREEN TOUCH OVERLAY (SHOWS ONLY IN LANDSCAPE FULLSCREEN WHEN TAPPED) ── */
 .fullscreen-touch-overlay {
   position: absolute; inset: 0; z-index: 25;
-  background: rgba(0,0,0,.5); backdrop-filter: blur(4px);
-  display: flex; flex-direction: column; justify-content: space-between;
+  background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+  display: none; flex-direction: column; justify-content: space-between;
   padding: max(16px, env(safe-area-inset-top)) 1.2rem 1.2rem;
   opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
 }
+body.is-landscape .fullscreen-touch-overlay {
+  display: flex !important;
+}
 .fullscreen-touch-overlay.visible {
-  opacity: 1; pointer-events: auto;
+  opacity: 1 !important; pointer-events: auto !important;
 }
 
 .fs-topbar { display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
@@ -341,16 +347,9 @@ input, textarea, [contenteditable="true"] {
 .yt-act-pill.dl-accent{background:var(--accent);font-weight:700;}
 .yt-act-pill.love-pill-btn.is-loved{background:#ff2d55;color:#fff;font-weight:700;}
 
-/* ZOOM CONTROLS IN ACTIONS BAR */
-.zoom-controls-group{
-  display:flex;align-items:center;gap:.4rem;background:#181818;
-  border:1px solid #333;border-radius:18px;padding:2px 8px;flex-shrink:0;
-}
-.zoom-btn-chip{
-  background:none;border:none;color:#aaa;font-size:.78rem;font-weight:600;
-  padding:4px 8px;border-radius:12px;cursor:pointer;
-}
-.zoom-btn-chip.active{background:#ff0000;color:#fff;}
+/* HIDE ZOOM IN AUDIO MODES */
+body.audio-mode #zoomToggleBtn,
+body.audio-mode .zoom-controls-group { display: none !important; }
 
 /* ── DOWNLOAD MODAL ── */
 .dl-modal{
@@ -454,14 +453,13 @@ input, textarea, [contenteditable="true"] {
   </div>
 </div>
 
-<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN WITH FULLSCREEN TOUCH OVERLAY & FAVORITES -->
+<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN -->
 <div class="yt-watch-screen" id="watchScreen">
   <div class="yt-watch-topbar">
     <button class="yt-back-btn" onclick="handleBackFromWatch()">← Back</button>
     <div style="font-weight:700;font-size:.9rem;" id="nowPlayingText">Now Playing</div>
     <div style="display:flex;gap:.6rem;align-items:center;">
       <button class="yt-back-btn" id="watchLoveBtn" onclick="toggleCurrentLove()" title="Love Song" style="font-size:1.2rem;">♡</button>
-      <button class="yt-back-btn" id="zoomToggleBtn" onclick="cycleZoomLevel()" title="Screen Zoom" style="font-size:.85rem;font-weight:700;background:#222;border-radius:12px;padding:3px 8px;">🔎 Fit 100%</button>
       <button class="yt-back-btn" onclick="toggleFullscreen()" title="Fullscreen" style="font-size:1.3rem;">⛶</button>
     </div>
   </div>
@@ -473,7 +471,7 @@ input, textarea, [contenteditable="true"] {
 
     <div class="touch-overlay-gesture" id="touchGestureOverlay" onclick="handleFullscreenTap(event)"></div>
 
-    <!-- SLEEK FULLSCREEN TOUCH OVERLAY WITH CC, SOUND, QUALITY, 10s SKIP, ZOOM -->
+    <!-- FULLSCREEN LANDSCAPE TOUCH OVERLAY (SHOWS ONLY IN LANDSCAPE FULLSCREEN WHEN TAPPED) -->
     <div class="fullscreen-touch-overlay" id="fullscreenTouchOverlay" onclick="handleFullscreenTap(event)">
       <div class="fs-topbar">
         <div style="font-weight:700;font-size:.9rem;color:#fff;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="fsTitle">Video Title</div>
@@ -546,16 +544,6 @@ input, textarea, [contenteditable="true"] {
 
     <div class="yt-actions-scroll">
       <button class="yt-act-pill love-pill-btn" id="watchLovePill" onclick="toggleCurrentLove()">❤️ Love Song</button>
-      
-      <!-- ZOOM PRESET CHIPS BAR -->
-      <div class="zoom-controls-group">
-        <span style="font-size:.75rem;color:#aaa;font-weight:700;margin-right:2px;">🔎 Zoom:</span>
-        <button class="zoom-btn-chip active" id="zChip100" onclick="setZoomLevel(1.0)">100%</button>
-        <button class="zoom-btn-chip" id="zChip125" onclick="setZoomLevel(1.25)">125%</button>
-        <button class="zoom-btn-chip" id="zChip150" onclick="setZoomLevel(1.50)">150%</button>
-        <button class="zoom-btn-chip" id="zChip200" onclick="setZoomLevel(2.00)">200%</button>
-      </div>
-
       <button class="yt-act-pill dl-accent" onclick="openDlModal()">⬇️ Download MP3 Song</button>
       <button class="yt-act-pill">↗️ Share</button>
     </div>
@@ -589,11 +577,12 @@ let seekTimer = null;
 // CLIENT SIDE SEARCH CACHE (INSTANT 0ms RESPONSES)
 const clientSearchCache = new Map();
 
-// ── FULLSCREEN TOUCH OVERLAY, CC, SOUND & QUALITY CONTROLS ──
+// ── FULLSCREEN TOUCH OVERLAY, CC, SOUND & QUALITY CONTROLS (LANDSCAPE FULLSCREEN ONLY) ──
 let fsOverlayTimer = null;
 let isCcOn = false;
 
 function handleFullscreenTap(e) {
+  if (!document.body.classList.contains('is-landscape')) return;
   if (e) { try { e.preventDefault(); e.stopPropagation(); } catch(err){} }
   const overlay = document.getElementById('fullscreenTouchOverlay');
   const isVisible = overlay.classList.contains('visible');
@@ -766,17 +755,6 @@ function setZoomLevel(scaleVal, e) {
     const baseScale = isLandscape ? 1.35 : 1.0;
     wrapper.style.transform = `scale(${baseScale * zoomScale})`;
   }
-
-  // Update button chips UI
-  document.querySelectorAll('.zoom-btn-chip').forEach(btn => btn.classList.remove('active'));
-  if (scaleVal === 1.0) document.getElementById('zChip100').classList.add('active');
-  else if (scaleVal === 1.25) document.getElementById('zChip125').classList.add('active');
-  else if (scaleVal === 1.50) document.getElementById('zChip150').classList.add('active');
-  else if (scaleVal === 2.00) document.getElementById('zChip200').classList.add('active');
-
-  const pct = Math.round(zoomScale * 100);
-  document.getElementById('zoomToggleBtn').textContent = `🔎 ${pct}%`;
-  showToast(`Screen Zoom: ${pct}%`);
 }
 
 function cycleZoomLevel(e) {
@@ -975,7 +953,7 @@ async function doSearch() {
   const feed = document.getElementById('videoFeed');
   
   let endpoint = `${API}/api/search/youtube`;
-  let label = '⚡ Searching YouTube (Ultra-Fast)...';
+  let label = '⚡ Searching YouTube...';
 
   if (currentMode === 'ytmusic') {
     endpoint = `${API}/api/search/ytmusic`;
@@ -1137,6 +1115,12 @@ function openWatch(id, title, artist, thumb) {
 
   let modeBadge = 'YouTube';
   let accentColor = 'var(--spotify-accent)';
+
+  if (currentMode === 'spotify' || currentMode === 'applemusic' || currentMode === 'ytmusic') {
+    document.body.classList.add('audio-mode');
+  } else {
+    document.body.classList.remove('audio-mode');
+  }
 
   if (currentMode === 'spotify') {
     modeBadge = 'Spotify MP3 Audio';
@@ -1336,6 +1320,7 @@ function switchTab(tab) {
 
   if (tab === 'home') {
     currentMode = 'youtube';
+    document.body.classList.remove('audio-mode');
     title.textContent = 'YouTube';
     si.placeholder = 'Search YouTube videos & music...';
     genreBar.style.display = 'none';
@@ -1345,6 +1330,7 @@ function switchTab(tab) {
     feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">Type any song or video name to search</div>`;
   } else if (tab === 'music') {
     currentMode = 'ytmusic';
+    document.body.classList.add('audio-mode');
     logo.classList.add('ytmusic');
     title.textContent = 'YouTube Music';
     si.placeholder = 'Search YouTube Music songs...';
@@ -1361,6 +1347,7 @@ function switchTab(tab) {
     feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">🎵 Search any song from YouTube Music or tap a category above</div>`;
   } else if (tab === 'spotify') {
     currentMode = 'spotify';
+    document.body.classList.add('audio-mode');
     logo.classList.add('spotify');
     title.textContent = 'Spotify Hits';
     si.placeholder = 'Search Spotify MP3 songs...';
@@ -1377,6 +1364,7 @@ function switchTab(tab) {
     feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">💚 Search any song from Spotify MP3 or tap a category above</div>`;
   } else if (tab === 'applemusic') {
     currentMode = 'applemusic';
+    document.body.classList.add('audio-mode');
     logo.classList.add('applemusic');
     title.textContent = 'Apple Music';
     si.placeholder = 'Search Apple Music songs...';
@@ -1392,6 +1380,7 @@ function switchTab(tab) {
     feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">🍎 Search any song from Apple Music MP3 or tap a category above</div>`;
   } else if (tab === 'favorites') {
     currentMode = 'favorites';
+    document.body.classList.remove('audio-mode');
     logo.classList.add('favorites');
     title.textContent = '❤️ Loved Playlist';
     si.placeholder = 'Search inside your favorites...';
