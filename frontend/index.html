@@ -557,7 +557,26 @@ let audioCtx = null;
 // CLIENT SIDE SEARCH CACHE (INSTANT 0ms RESPONSES)
 const clientSearchCache = new Map();
 
-// ── LIVE SEARCH AUTO-SUGGESTIONS SYSTEM (CLIENT + BACKEND FALLBACK) ──
+// ── LIVE BACKGROUND PLAYBACK AUTO-RESUME WHEN SWITCHING TO ANY APP OR LOCKING SCREEN ──
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && currentVideo && !isUserPaused) {
+    console.log('[Background Playback Keep-Alive]: Re-triggering playback on app switch/screen lock!');
+    if (ytPlayer && ytPlayer.playVideo) {
+      ytPlayer.playVideo();
+    }
+  }
+});
+window.addEventListener('blur', () => {
+  if (currentVideo && !isUserPaused) {
+    setTimeout(() => {
+      if (ytPlayer && ytPlayer.playVideo) {
+        ytPlayer.playVideo();
+      }
+    }, 100);
+  }
+});
+
+// ── LIVE SEARCH AUTO-SUGGESTIONS SYSTEM ──
 window.handleSuggestionsCallback = function(data) {
   if (data && data[1] && data[1].length > 0) {
     renderSuggestionsList(data[1]);
