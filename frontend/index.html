@@ -208,6 +208,12 @@ input, textarea, [contenteditable="true"] {
   width:100%!important;height:100%!important;border:none!important;
 }
 
+/* NON-BLOCKING PINCH DETECTOR LAYER FOR YOUTUBE BOX */
+.pinch-detector-overlay {
+  position: absolute; inset: 0; z-index: 15;
+  pointer-events: none; touch-action: none;
+}
+
 /* ── AUDIO SEEK SLIDER (SHOWS ONLY IN SPOTIFY/APPLE MUSIC AUDIO MODES) ── */
 .yt-red-slider-container {
   width: 100%; padding: 8px 1rem 4px; background: #121212;
@@ -344,8 +350,8 @@ body.audio-mode .music-controls-panel { display: flex !important; }
 <body>
 <div class="toast" id="toast"></div>
 
-<!-- SILENT BACKGROUND AUDIO KEEPER TO PREVENT ANDROID LOCK SCREEN MEDIA PAUSE -->
-<audio id="bgAudioKeeper" loop src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="></audio>
+<!-- REAL HTML5 AUDIO STREAM TO ENGAGE ANDROID OS MEDIA ENGINE FOR SYSTEM NOTIFICATION DRAWER MEDIA CARD -->
+<audio id="bgAudioKeeper" loop crossorigin="anonymous"></audio>
 
 <div class="app" id="appRoot">
   <!-- TOP HEADER -->
@@ -388,7 +394,7 @@ body.audio-mode .music-controls-panel { display: flex !important; }
     </div>
   </div>
 
-  <!-- RESUME PLAYBACK BANNER (POSITIONED MOVED TO BOTTOM JUST ABOVE TAB NAV BAR) -->
+  <!-- RESUME PLAYBACK BANNER (MOVED TO BOTTOM DIRECTLY ABOVE TAB NAV BAR) -->
   <div class="resume-banner" id="resumeBanner" onclick="resumeLastPlayed()">
     <span class="resume-banner-text" id="resumeBannerText">▶ Resume: Song Name (0:00)</span>
     <span class="resume-btn-chip">Resume</span>
@@ -444,6 +450,9 @@ body.audio-mode .music-controls-panel { display: flex !important; }
     <div id="zoomWrapper" class="zoom-wrapper">
       <div id="ytPlayerContainer"></div>
     </div>
+
+    <!-- NON-BLOCKING PINCH OVERLAY LAYER FOR YOUTUBE BOX -->
+    <div class="pinch-detector-overlay" id="pinchOverlay"></div>
 
     <div class="music-album-overlay" id="musicAlbumOverlay">
       <div class="music-album-disc">
@@ -521,6 +530,7 @@ let isUserPaused = false;
 let initialPinchDist = 0;
 let initialScale = 1.0;
 let zoomScale = 1.0;
+let audioCtx = null;
 
 // CLIENT SIDE SEARCH CACHE (INSTANT 0ms RESPONSES)
 const clientSearchCache = new Map();
@@ -580,10 +590,26 @@ function updateMediaSessionPosition() {
 }
 
 function startBgAudioKeeper() {
-  const bgAudio = document.getElementById('bgAudioKeeper');
-  if (bgAudio) {
-    bgAudio.play().catch(e=>{});
-  }
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const dst = audioCtx.createMediaStreamDestination();
+      const gain = audioCtx.createGain();
+      gain.gain.value = 0.001; // Continuous low volume stream to force Android OS Media Notification Card
+      osc.connect(gain);
+      gain.connect(dst);
+      osc.start();
+
+      const bgAudio = document.getElementById('bgAudioKeeper');
+      if (bgAudio) {
+        bgAudio.srcObject = dst.stream;
+        bgAudio.play().catch(e => {});
+      }
+    } else if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  } catch(e){}
 }
 
 // CONTINUOUS BACKGROUND HEARTBEAT TO ENSURE YOUTUBE PLAYER NEVER STOPS ON LOCK SCREEN OR APP SWITCHING
@@ -753,36 +779,48 @@ document.addEventListener('DOMContentLoaded', () => {
   loadLovedSongs();
   checkResumeBanner();
 
-  // 2-FINGER PINCH TO ZOOM GESTURE (ATTACHED ONLY TO PLAYER BOX)
+  // 2-FINGER PINCH TO ZOOM GESTURE LISTENER (WORKING IN BOTH PORTRAIT & LANDSCAPE ON YOUTUBE PLAYER BOX ONLY)
   const playerBox = document.getElementById('playerBox');
-  if (playerBox) {
-    playerBox.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 2) {
-        initialPinchDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        initialScale = zoomScale;
-      }
-    }, { passive: true });
+  const pinchOverlay = document.getElementById('pinchOverlay');
 
-    playerBox.addEventListener('touchmove', (e) => {
-      if (e.touches.length === 2 && initialPinchDist > 0) {
-        const currentDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        const factor = currentDist / initialPinchDist;
-        applyZoom(initialScale * factor);
-      }
-    }, { passive: true });
-
-    playerBox.addEventListener('touchend', (e) => {
-      if (e.touches.length < 2) {
-        initialPinchDist = 0;
-      }
-    }, { passive: true });
+  function handlePinchStart(e) {
+    if (e.touches && e.touches.length === 2) {
+      if (pinchOverlay) pinchOverlay.style.pointerEvents = 'auto';
+      initialPinchDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      initialScale = zoomScale;
+    }
   }
+
+  function handlePinchMove(e) {
+    if (e.touches && e.touches.length === 2 && initialPinchDist > 0) {
+      const currentDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const factor = currentDist / initialPinchDist;
+      applyZoom(initialScale * factor);
+    }
+  }
+
+  function handlePinchEnd(e) {
+    if (!e.touches || e.touches.length < 2) {
+      initialPinchDist = 0;
+      if (pinchOverlay) pinchOverlay.style.pointerEvents = 'none';
+    }
+  }
+
+  if (playerBox) {
+    playerBox.addEventListener('touchstart', handlePinchStart, { passive: true });
+    playerBox.addEventListener('touchmove', handlePinchMove, { passive: true });
+    playerBox.addEventListener('touchend', handlePinchEnd, { passive: true });
+  }
+
+  window.addEventListener('touchstart', handlePinchStart, { passive: true });
+  window.addEventListener('touchmove', handlePinchMove, { passive: true });
+  window.addEventListener('touchend', handlePinchEnd, { passive: true });
 });
 
 // ── YOUTUBE PLAYER INIT WITH 100% ORIGINAL YOUTUBE CONTROLS ──
