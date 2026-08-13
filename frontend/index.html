@@ -26,6 +26,16 @@ input, textarea, [contenteditable="true"] {
 
 .app{height:100%;width:100%;display:flex;flex-direction:column;position:relative;background:var(--bg);}
 
+/* ── RESUME PLAYBACK BANNER ── */
+.resume-banner {
+  background: linear-gradient(90deg, #ff0000, #990000);
+  color: #fff; padding: .5rem 1rem; font-size: .82rem; font-weight: 600;
+  display: none; align-items: center; justify-content: space-between;
+  cursor: pointer; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,.5);
+}
+.resume-banner-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%; }
+.resume-btn-chip { background: #fff; color: #000; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: .75rem; }
+
 /* ── TOP HEADER ── */
 .yt-header{
   height:calc(52px + var(--safe-top));
@@ -202,8 +212,8 @@ input, textarea, [contenteditable="true"] {
 
 /* 2-FINGER TOUCH PINCH-TO-ZOOM OVERLAY LAYER ABOVE IFRAME */
 .touch-overlay-gesture {
-  position: absolute; inset: 0; z-index: 8;
-  background: transparent; touch-action: none; display: block !important;
+  position: absolute; inset: 0; z-index: 20;
+  background: rgba(0,0,0,0.001); touch-action: none; display: block !important;
 }
 
 /* ── ORIGINAL YOUTUBE ANIMATED DOUBLE-TAP SEEK RIPPLE OVERLAYS ── */
@@ -231,6 +241,33 @@ input, textarea, [contenteditable="true"] {
   30% { opacity: 1; transform: scale(1); }
   80% { opacity: 1; transform: scale(1.05); }
   100% { opacity: 0; transform: scale(1.1); }
+}
+
+/* ── AUDIO SEEK SLIDER (SHOWS ONLY IN AUDIO MODES SO YOUTUBE HAS EXACTLY 1 NATIVE SLIDER) ── */
+.yt-red-slider-container {
+  width: 100%; padding: 8px 1rem 4px; background: #121212;
+  display: none; flex-direction: column; gap: 4px; border-bottom: 1px solid #222;
+}
+body.audio-mode .yt-red-slider-container {
+  display: flex !important;
+}
+.yt-red-slider-row {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: .75rem; color: #bbb; font-weight: 600; font-family: 'Roboto', sans-serif;
+}
+.yt-red-seek-input {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 5px; background: rgba(255,255,255,0.2);
+  border-radius: 3px; outline: none; cursor: pointer;
+}
+.yt-red-seek-input::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--spotify-accent); cursor: pointer; box-shadow: 0 0 8px rgba(29,185,84,0.8);
+  transition: transform 0.15s ease;
+}
+.yt-red-seek-input:active::-webkit-slider-thumb {
+  transform: scale(1.4);
 }
 
 /* ── SLEEK IMMERSIVE FULLSCREEN TOUCH CONTROL OVERLAY (SHOWS ONLY IN LANDSCAPE FULLSCREEN WHEN TAPPED) ── */
@@ -342,8 +379,6 @@ body.is-landscape .fullscreen-touch-overlay {
   background:#181818;border:1px solid #303030;border-radius:14px;
   padding:.9rem 1rem;margin:.8rem 0;display:flex;flex-direction:column;gap:.7rem;
 }
-.music-seek-slider{width:100%;accent-color:var(--spotify-accent);cursor:pointer;}
-.music-time-display{display:flex;justify-content:space-between;font-size:.78rem;color:#aaa;font-weight:500;}
 
 .music-buttons-row{display:flex;align-items:center;justify-content:center;gap:1.5rem;margin-top:2px;}
 .music-btn{
@@ -412,7 +447,16 @@ body.audio-mode .zoom-controls-group { display: none !important; }
 <body>
 <div class="toast" id="toast"></div>
 
+<!-- SILENT BACKGROUND AUDIO KEEPER TO PREVENT ANDROID LOCK SCREEN MEDIA PAUSE -->
+<audio id="bgAudioKeeper" loop src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="></audio>
+
 <div class="app" id="appRoot">
+  <!-- RESUME PLAYBACK POSITION BANNER -->
+  <div class="resume-banner" id="resumeBanner" onclick="resumeLastPlayed()">
+    <span class="resume-banner-text" id="resumeBannerText">▶ Resume: Song Name (0:00)</span>
+    <span class="resume-btn-chip">Resume</span>
+  </div>
+
   <!-- TOP HEADER -->
   <div class="yt-header">
     <div class="yt-logo" id="headerLogo" onclick="switchTab('home')">
@@ -505,8 +549,8 @@ body.audio-mode .zoom-controls-group { display: none !important; }
       <div id="ytPlayerContainer"></div>
     </div>
 
-    <!-- 2-FINGER PINCH TO ZOOM & ORIGINAL YOUTUBE DOUBLE-TAP SEEK OVERLAY -->
-    <div class="touch-overlay-gesture" id="touchGestureOverlay" onclick="handleFullscreenTap(event)"></div>
+    <!-- 100% WORKING 2-FINGER PINCH & YOUTUBE DOUBLE-TAP SEEK OVERLAY -->
+    <div class="touch-overlay-gesture" id="touchGestureOverlay"></div>
 
     <!-- YOUTUBE ANIMATED DOUBLE-TAP SEEK RIPPLE OVERLAYS -->
     <div class="yt-doubletap-ripple left" id="rippleLeft">
@@ -562,24 +606,26 @@ body.audio-mode .zoom-controls-group { display: none !important; }
     </div>
   </div>
 
+  <!-- AUDIO SEEK SLIDER (SHOWS ONLY IN AUDIO MODES SO YOUTUBE HAS EXACTLY 1 NATIVE SLIDER IN BOTH PORTRAIT & LANDSCAPE) -->
+  <div class="yt-red-slider-container">
+    <input type="range" class="yt-red-seek-input" id="musicSeekSlider" value="0" min="0" max="100" oninput="seekTrack(this.value)" />
+    <div class="yt-red-slider-row">
+      <span id="musicCurTime">0:00</span>
+      <span id="musicDurTime">0:00</span>
+    </div>
+  </div>
+
   <div class="yt-watch-info">
     <div class="yt-watch-title" id="wTitle">Song Title</div>
     <div class="yt-watch-views" id="wViews">Audio Track · Official Stream</div>
 
-    <!-- AUDIO CONTROLS PANEL (SEEK BAR & MAIN PLAY/PAUSE) -->
+    <!-- AUDIO CONTROLS PANEL (MAIN PLAY/PAUSE & DOUBLE TAP TIP) -->
     <div class="music-controls-panel">
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <input type="range" class="music-seek-slider" id="musicSeekSlider" value="0" min="0" max="100" oninput="seekTrack(this.value)" />
-        <div class="music-time-display">
-          <span id="musicCurTime">0:00</span>
-          <span id="musicDurTime">0:00</span>
-        </div>
-      </div>
       <div class="music-buttons-row">
         <button class="music-play-main-btn" id="musicMainPlayBtn" onclick="togglePlayPause()">⏸ Pause</button>
       </div>
-      <div style="text-align:center;font-size:.72rem;color:#888;margin-top:2px;">
-        💡 Double-tap left or right side of video to skip 10 seconds
+      <div style="text-align:center;font-size:.75rem;color:#aaa;margin-top:2px;font-weight:500;">
+        👈 Double-tap left side to Rewind 10s | Double-tap right side to Forward 10s 👉
       </div>
     </div>
 
@@ -635,9 +681,104 @@ let backPressCount = 0;
 let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic', 'favorites'
 let searchAbortController = null;
 let seekTimer = null;
+let savePositionTimer = null;
+let isUserPaused = false;
 
 // CLIENT SIDE SEARCH CACHE (INSTANT 0ms RESPONSES)
 const clientSearchCache = new Map();
+
+// ── LOCK SCREEN & BACKGROUND PLAYBACK (WHATSAPP & POWER BUTTON LOCK SCREEN) ──
+function setupMediaSession() {
+  if (!('mediaSession' in navigator) || !currentVideo) return;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentVideo.title || 'Aura Music Track',
+      artist: currentVideo.artist || 'Aura Music Player',
+      album: 'Aura Music',
+      artwork: [
+        { src: currentVideo.thumb || currentVideo.thumbnail || '', sizes: '512x512', type: 'image/jpeg' }
+      ]
+    });
+
+    navigator.mediaSession.setActionHandler('play', () => { isUserPaused = false; togglePlayPause(); });
+    navigator.mediaSession.setActionHandler('pause', () => { isUserPaused = true; togglePlayPause(); });
+    navigator.mediaSession.setActionHandler('seekbackward', () => { skipTrack(-10); });
+    navigator.mediaSession.setActionHandler('seekforward', () => { skipTrack(10); });
+  } catch(e){}
+}
+
+function startBgAudioKeeper() {
+  const bgAudio = document.getElementById('bgAudioKeeper');
+  if (bgAudio) {
+    bgAudio.play().catch(e=>{});
+  }
+}
+
+// CONTINUOUS BACKGROUND HEARTBEAT TO ENSURE YOUTUBE PLAYER NEVER STOPS ON LOCK SCREEN OR APP SWITCHING
+setInterval(() => {
+  if (currentVideo && !isUserPaused && ytPlayer && ytPlayer.getPlayerState) {
+    try {
+      const st = ytPlayer.getPlayerState();
+      if (st === YT.PlayerState.PAUSED) {
+        console.log('[Lock Screen / App Switch Heartbeat]: Re-playing video!');
+        ytPlayer.playVideo();
+      }
+    } catch(e){}
+  }
+}, 1000);
+
+// ── SAVE PLAYBACK POSITION & AUTO-RESUME ("WHERE I LEFT OFF") ──
+function savePlaybackPosition() {
+  if (!currentVideo || !ytPlayer || !ytPlayer.getCurrentTime) return;
+  try {
+    const curTime = ytPlayer.getCurrentTime() || 0;
+    if (curTime > 5) {
+      const data = {
+        video: currentVideo,
+        time: curTime,
+        mode: currentMode,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('aura_last_played', JSON.stringify(data));
+      checkResumeBanner();
+    }
+  } catch(e){}
+}
+
+function checkResumeBanner() {
+  try {
+    const raw = localStorage.getItem('aura_last_played');
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data && data.video && data.time > 5) {
+      const banner = document.getElementById('resumeBanner');
+      const text = document.getElementById('resumeBannerText');
+      if (banner && text) {
+        text.textContent = `▶ Resume: ${data.video.title} (${fmtSec(data.time)})`;
+        banner.style.display = 'flex';
+      }
+    }
+  } catch(e){}
+}
+
+function resumeLastPlayed() {
+  try {
+    const raw = localStorage.getItem('aura_last_played');
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data && data.video) {
+      if (data.mode) currentMode = data.mode;
+      openWatch(data.video.id, data.video.title, data.video.artist, data.video.thumb || data.video.thumbnail);
+      setTimeout(() => {
+        if (ytPlayer && ytPlayer.seekTo) {
+          ytPlayer.seekTo(data.time, true);
+          showToast(`Resumed from ${fmtSec(data.time)}`);
+        }
+      }, 800);
+      document.getElementById('resumeBanner').style.display = 'none';
+    }
+  } catch(e){}
+}
 
 // ── FULLSCREEN TOUCH OVERLAY, CC, SOUND & QUALITY CONTROLS ──
 let fsOverlayTimer = null;
@@ -802,7 +943,7 @@ function updateCurrentLoveUI() {
   }
 }
 
-// ── GUARANTEED 100% WORKING ZOOM WRAPPER SYSTEM (PORTRAIT & LANDSCAPE 2-FINGER PINCH) ──
+// ── GUARANTEED 100% WORKING ZOOM WRAPPER SYSTEM ──
 let zoomScale = 1.0;
 let initialPinchDist = 0;
 let initialScale = 1.0;
@@ -838,9 +979,9 @@ function cycleZoomLevel(e) {
   else setZoomLevel(1.0);
 }
 
-// ── 2-FINGER TOUCH PINCH & ORIGINAL YOUTUBE DOUBLE-TAP SEEK 10s GESTURES ──
-let lastTapTime = 0;
-let lastTapX = 0;
+// ── 100% ACCURATE DOUBLE-TAP 10s GESTURE & 2-FINGER PINCH ──
+let tapCount = 0;
+let tapTimer = null;
 
 function triggerDoubleTapRipple(side) {
   const ripple = document.getElementById(side === 'left' ? 'rippleLeft' : 'rippleRight');
@@ -854,9 +995,42 @@ function triggerDoubleTapRipple(side) {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadLovedSongs();
+  checkResumeBanner();
 
   const overlay = document.getElementById('touchGestureOverlay');
-  
+
+  // POINTER DOWN TOUCH TRACKING FOR 100% ACCURATE DOUBLE TAP
+  overlay.addEventListener('pointerdown', (e) => {
+    const rect = overlay.getBoundingClientRect();
+    const touchX = e.clientX - rect.left;
+    const isLeft = touchX < (rect.width / 2);
+
+    tapCount++;
+    if (tapCount === 1) {
+      tapTimer = setTimeout(() => {
+        tapCount = 0;
+        if (document.body.classList.contains('is-landscape')) {
+          handleFullscreenTap(e);
+        } else {
+          togglePlayPause();
+        }
+      }, 260);
+    } else if (tapCount === 2) {
+      clearTimeout(tapTimer);
+      tapCount = 0;
+      if (isLeft) {
+        skipTrack(-10);
+        triggerDoubleTapRipple('left');
+        showToast('⏪ Rewind 10s');
+      } else {
+        skipTrack(10);
+        triggerDoubleTapRipple('right');
+        showToast('⏩ Forward 10s');
+      }
+    }
+  });
+
+  // 2-FINGER PINCH TO ZOOM GESTURES
   overlay.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
       initialPinchDist = Math.hypot(
@@ -864,29 +1038,6 @@ document.addEventListener('DOMContentLoaded', () => {
         e.touches[0].clientY - e.touches[1].clientY
       );
       initialScale = zoomScale;
-    } else if (e.touches.length === 1) {
-      const now = Date.now();
-      const touchX = e.touches[0].clientX;
-      const rect = overlay.getBoundingClientRect();
-      const relativeX = touchX - rect.left;
-      const isLeftHalf = relativeX < (rect.width / 2);
-
-      if (now - lastTapTime < 350 && Math.abs(touchX - lastTapX) < 120) {
-        // DOUBLE TAP DETECTED!
-        if (isLeftHalf) {
-          skipTrack(-10);
-          triggerDoubleTapRipple('left');
-          showToast('⏪ Rewind 10s');
-        } else {
-          skipTrack(10);
-          triggerDoubleTapRipple('right');
-          showToast('⏩ Forward 10s');
-        }
-        lastTapTime = 0;
-      } else {
-        lastTapTime = now;
-        lastTapX = touchX;
-      }
     }
   }, { passive: true });
 
@@ -951,11 +1102,21 @@ function onPlayerStateChange(e) {
     if (miniBtn) miniBtn.textContent = '⏸';
     if (fsBtn) fsBtn.textContent = '⏸';
     startSeekTimer();
-  } else {
-    if (btn) btn.textContent = '▶ Play';
-    if (miniBtn) miniBtn.textContent = '▶';
-    if (fsBtn) fsBtn.textContent = '▶';
-    stopSeekTimer();
+    startBgAudioKeeper();
+    setupMediaSession();
+  } else if (e.data === YT.PlayerState.PAUSED) {
+    // IF PAUSED BY LOCK SCREEN OR MINIMIZE SYSTEM AND NOT EXPLICIT USER PAUSE, AUTO-RESUME IMMEDIATELY!
+    if (!isUserPaused && currentVideo) {
+      console.log('[System Pause Intercepted]: Resuming playback!');
+      setTimeout(() => {
+        if (ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();
+      }, 50);
+    } else {
+      if (btn) btn.textContent = '▶ Play';
+      if (miniBtn) miniBtn.textContent = '▶';
+      if (fsBtn) fsBtn.textContent = '▶';
+      stopSeekTimer();
+    }
   }
 }
 
@@ -969,6 +1130,7 @@ function startSeekTimer() {
       document.getElementById('musicSeekSlider').value = pct;
       document.getElementById('musicCurTime').textContent = fmtSec(cur);
       document.getElementById('musicDurTime').textContent = fmtSec(dur);
+      savePlaybackPosition();
     }
   }, 1000);
 }
@@ -981,8 +1143,10 @@ function togglePlayPause() {
   if (!ytPlayer || !ytPlayer.getPlayerState) return;
   const state = ytPlayer.getPlayerState();
   if (state === YT.PlayerState.PLAYING) {
+    isUserPaused = true;
     ytPlayer.pauseVideo();
   } else {
+    isUserPaused = false;
     ytPlayer.playVideo();
   }
 }
@@ -991,6 +1155,7 @@ function seekTrack(val) {
   if (ytPlayer && ytPlayer.getDuration) {
     const dur = ytPlayer.getDuration() || 0;
     ytPlayer.seekTo((val / 100) * dur, true);
+    savePlaybackPosition();
   }
 }
 
@@ -998,6 +1163,7 @@ function skipTrack(sec) {
   if (ytPlayer && ytPlayer.getCurrentTime) {
     const cur = ytPlayer.getCurrentTime() || 0;
     ytPlayer.seekTo(cur + sec, true);
+    savePlaybackPosition();
   }
 }
 
@@ -1206,6 +1372,7 @@ function renderFavoritesFeed() {
 // ── PLAY PLAYER SCREEN & MINI PLAYER BAR ──
 function openWatch(id, title, artist, thumb) {
   currentVideo = { id, title, artist, thumb };
+  isUserPaused = false;
   document.getElementById('wTitle').textContent = title;
   document.getElementById('wChannel').textContent = artist;
   document.getElementById('wAvatar').textContent = (artist||'S')[0].toUpperCase();
@@ -1261,6 +1428,8 @@ function openWatch(id, title, artist, thumb) {
   document.getElementById('nowPlayingText').textContent = `🎵 ${modeBadge}`;
 
   updateCurrentLoveUI();
+  setupMediaSession();
+  startBgAudioKeeper();
 
   // DISMISS KEYBOARD & SCROLL WATCH SCREEN TO TOP
   document.getElementById('searchInput').blur();
@@ -1359,6 +1528,7 @@ function closeWatch() {
   document.getElementById('mainNav').style.display = 'flex';
   document.getElementById('miniPlayerBar').style.display = 'none';
   currentVideo = null;
+  isUserPaused = true;
   if (ytPlayer && ytPlayer.stopVideo) { try { ytPlayer.stopVideo(); } catch(e){} }
   stopSeekTimer();
 
