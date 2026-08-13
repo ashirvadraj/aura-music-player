@@ -62,10 +62,10 @@ input, textarea, [contenteditable="true"] {
 .yt-hdr-icon{font-size:1.2rem;cursor:pointer;color:var(--text);background:none;border:none;display:flex;align-items:center;gap:4px;}
 .love-badge-count{background:#ff2d55;color:#fff;font-size:.7rem;font-weight:700;padding:2px 6px;border-radius:10px;}
 
-/* ── SEARCH BAR ── */
+/* ── SEARCH BAR & LIVE AUTO-SUGGESTIONS ── */
 .yt-search-bar{
   padding:.6rem 1rem;background:var(--bg);border-bottom:1px solid var(--border);
-  display:flex;gap:.5rem;align-items:center;flex-shrink:0;z-index:20;
+  display:flex;gap:.5rem;align-items:center;flex-shrink:0;z-index:100;position:relative;
 }
 .yt-input-box{
   flex:1;background:#121212;border:1px solid #303030;border-radius:20px;
@@ -82,6 +82,19 @@ input, textarea, [contenteditable="true"] {
 }
 .yt-clear-btn:active{color:#fff;transform:scale(1.2);}
 .yt-search-btn{background:#222;border:1px solid #303030;border-radius:20px;color:#fff;padding:.45rem 1rem;font-weight:500;cursor:pointer;flex-shrink:0;}
+
+/* AUTO-SUGGESTIONS DROPDOWN CONTAINER */
+.search-suggestions-box {
+  position: absolute; top: 100%; left: 1rem; right: 1rem;
+  background: #1c1c1e; border: 1px solid #333; border-radius: 0 0 16px 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.8); z-index: 1000; display: none;
+  max-height: 240px; overflow-y: auto;
+}
+.suggestion-item {
+  padding: .65rem 1rem; font-size: .9rem; color: #ddd; border-bottom: 1px solid rgba(255,255,255,.05);
+  display: flex; align-items: center; gap: .6rem; cursor: pointer;
+}
+.suggestion-item:active { background: #333; color: #fff; }
 
 /* ── MUSIC GENRE CHIPS BAR ── */
 .ytm-genre-bar{
@@ -208,11 +221,20 @@ input, textarea, [contenteditable="true"] {
   width:100%!important;height:100%!important;border:none!important;
 }
 
-/* NON-BLOCKING PINCH DETECTOR LAYER FOR YOUTUBE BOX */
-.pinch-detector-overlay {
-  position: absolute; inset: 0; z-index: 15;
-  pointer-events: none; touch-action: none;
+/* NON-BLOCKING FLOATING LANDSCAPE/PORTRAIT ZOOM CHIP */
+.player-zoom-chip-bar {
+  position: absolute; top: max(10px, env(safe-area-inset-top)); right: 12px;
+  z-index: 9999; display: flex; align-items: center; gap: .5rem;
+  pointer-events: none;
 }
+.player-zoom-chip {
+  pointer-events: auto !important;
+  background: rgba(0,0,0,.75); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,.25); border-radius: 16px;
+  color: #fff; padding: .35rem .75rem; font-size: .78rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.6);
+}
+.player-zoom-chip:active { background: #ff0000; }
 
 /* ── AUDIO SEEK SLIDER (SHOWS ONLY IN SPOTIFY/APPLE MUSIC AUDIO MODES) ── */
 .yt-red-slider-container {
@@ -241,7 +263,7 @@ body.audio-mode .yt-red-slider-container {
   transform: scale(1.4);
 }
 
-/* ── 100% HARDWARE FULLSCREEN LANDSCAPE FILL ── */
+/* ── 100% ORIGINAL YOUTUBE CONTROLS IN LANDSCAPE MODE ── */
 @media screen and (orientation: landscape) {
   body.has-open-player .yt-watch-topbar,
   body.has-open-player .yt-watch-info,
@@ -269,12 +291,8 @@ body.audio-mode .yt-red-slider-container {
   }
 
   body.has-open-player #ytPlayerContainer iframe {
-    position: absolute !important;
-    top: 50% !important; left: 50% !important;
     width: 100vw !important; height: 100vh !important;
-    min-width: 100vw !important; min-height: 100vh !important;
-    transform: translate(-50%, -50%) !important;
-    object-fit: cover !important; border: none !important;
+    border: none !important;
   }
 }
 
@@ -368,27 +386,30 @@ body.audio-mode .music-controls-panel { display: flex !important; }
     </div>
   </div>
 
-  <!-- SEARCH BAR -->
+  <!-- SEARCH BAR & LIVE AUTO-SUGGESTIONS -->
   <div class="yt-search-bar">
     <div class="yt-input-box">
       <span>🔍</span>
       <input type="text" id="searchInput"
         placeholder="Search YouTube..."
-        oninput="toggleClearBtn()"
+        oninput="handleSearchInput()"
         onkeydown="handleSearchKey(event)"
-        onblur="dismissKeyboard()" />
+        onfocus="handleSearchInput()" />
       <button type="button" class="yt-clear-btn" id="clearBtn"
         onpointerdown="clearSearch(event)"
         onclick="clearSearch(event)">✕</button>
     </div>
     <button class="yt-search-btn" onclick="doSearch()">Search</button>
+
+    <!-- LIVE SEARCH SUGGESTIONS DROPDOWN BOX -->
+    <div class="search-suggestions-box" id="suggestionsBox"></div>
   </div>
 
   <!-- GENRE CHIPS BAR -->
   <div class="ytm-genre-bar" id="ytmGenreBar"></div>
 
   <!-- FEED -->
-  <div class="yt-feed" id="videoFeed">
+  <div class="yt-feed" id="videoFeed" onclick="hideSuggestions()">
     <div style="text-align:center;padding:3rem 1rem;color:#888;">
       Type any song or video name to search
     </div>
@@ -451,8 +472,10 @@ body.audio-mode .music-controls-panel { display: flex !important; }
       <div id="ytPlayerContainer"></div>
     </div>
 
-    <!-- NON-BLOCKING PINCH OVERLAY LAYER FOR YOUTUBE BOX -->
-    <div class="pinch-detector-overlay" id="pinchOverlay"></div>
+    <!-- NON-BLOCKING FLOATING LANDSCAPE/PORTRAIT ZOOM CHIP -->
+    <div class="player-zoom-chip-bar">
+      <button class="player-zoom-chip" onclick="cycleZoomLevel(event)">🔎 Zoom: <span id="playerZoomLabel">100%</span></button>
+    </div>
 
     <div class="music-album-overlay" id="musicAlbumOverlay">
       <div class="music-album-disc">
@@ -525,15 +548,58 @@ let currentVideo = null;
 let backPressCount = 0;
 let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic', 'favorites'
 let searchAbortController = null;
+let suggestDebounceTimer = null;
 let seekTimer = null;
 let isUserPaused = false;
-let initialPinchDist = 0;
-let initialScale = 1.0;
 let zoomScale = 1.0;
 let audioCtx = null;
 
 // CLIENT SIDE SEARCH CACHE (INSTANT 0ms RESPONSES)
 const clientSearchCache = new Map();
+
+// ── LIVE SEARCH AUTO-SUGGESTIONS SYSTEM ──
+function handleSearchInput() {
+  toggleClearBtn();
+  const q = document.getElementById('searchInput').value.trim();
+  const box = document.getElementById('suggestionsBox');
+
+  if (!q || q.length < 2) {
+    box.style.display = 'none';
+    return;
+  }
+
+  clearTimeout(suggestDebounceTimer);
+  suggestDebounceTimer = setTimeout(async () => {
+    try {
+      const r = await fetch(`${API}/api/suggestions?q=${encodeURIComponent(q)}`);
+      const d = await r.json();
+      if (d.suggestions && d.suggestions.length > 0) {
+        box.innerHTML = d.suggestions.slice(0, 7).map(item => `
+          <div class="suggestion-item" onclick="selectSuggestion('${escHtml(item)}')">
+            <span>🔍</span> ${item}
+          </div>
+        `).join('');
+        box.style.display = 'block';
+      } else {
+        box.style.display = 'none';
+      }
+    } catch(e) {
+      box.style.display = 'none';
+    }
+  }, 150);
+}
+
+function selectSuggestion(queryStr) {
+  const si = document.getElementById('searchInput');
+  si.value = queryStr;
+  hideSuggestions();
+  doSearch();
+}
+
+function hideSuggestions() {
+  const box = document.getElementById('suggestionsBox');
+  if (box) box.style.display = 'none';
+}
 
 // ── FULL NATIVE ANDROID SYSTEM NOTIFICATION SHADE & LOCK SCREEN MEDIA CARD ──
 function setupMediaSession() {
@@ -596,7 +662,7 @@ function startBgAudioKeeper() {
       const osc = audioCtx.createOscillator();
       const dst = audioCtx.createMediaStreamDestination();
       const gain = audioCtx.createGain();
-      gain.gain.value = 0.001; // Continuous low volume stream to force Android OS Media Notification Card
+      gain.gain.value = 0.001; // Force Android OS Media Notification Card
       osc.connect(gain);
       gain.connect(dst);
       osc.start();
@@ -764,63 +830,30 @@ function updateCurrentLoveUI() {
   }
 }
 
-// ── PURE 2-FINGER PINCH TO ZOOM SYSTEM (ONLY ON YOUTUBE VIDEO BOX) ──
+// ── SCREEN ZOOM SYSTEM FOR YOUTUBE PLAYER (WORKS IN PORTRAIT & LANDSCAPE) ──
 function applyZoom(scaleVal) {
-  zoomScale = Math.min(Math.max(scaleVal, 1.0), 3.5);
+  zoomScale = Math.min(Math.max(scaleVal, 1.0), 3.0);
   const wrapper = document.getElementById('zoomWrapper');
   if (wrapper) {
-    const isLandscape = window.innerWidth > window.innerHeight;
-    const baseScale = isLandscape ? 1.35 : 1.0;
-    wrapper.style.transform = `scale(${baseScale * zoomScale})`;
+    wrapper.style.transform = `scale(${zoomScale})`;
   }
+  const pct = Math.round(zoomScale * 100);
+  const lbl = document.getElementById('playerZoomLabel');
+  if (lbl) lbl.textContent = `${pct}%`;
+  showToast(`Screen Zoom: ${pct}%`);
+}
+
+function cycleZoomLevel(e) {
+  if (e) e.stopPropagation();
+  if (zoomScale < 1.15) applyZoom(1.25);
+  else if (zoomScale < 1.4) applyZoom(1.50);
+  else if (zoomScale < 1.8) applyZoom(2.00);
+  else applyZoom(1.0);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   loadLovedSongs();
   checkResumeBanner();
-
-  // 2-FINGER PINCH TO ZOOM GESTURE LISTENER (WORKING IN BOTH PORTRAIT & LANDSCAPE ON YOUTUBE PLAYER BOX ONLY)
-  const playerBox = document.getElementById('playerBox');
-  const pinchOverlay = document.getElementById('pinchOverlay');
-
-  function handlePinchStart(e) {
-    if (e.touches && e.touches.length === 2) {
-      if (pinchOverlay) pinchOverlay.style.pointerEvents = 'auto';
-      initialPinchDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      initialScale = zoomScale;
-    }
-  }
-
-  function handlePinchMove(e) {
-    if (e.touches && e.touches.length === 2 && initialPinchDist > 0) {
-      const currentDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const factor = currentDist / initialPinchDist;
-      applyZoom(initialScale * factor);
-    }
-  }
-
-  function handlePinchEnd(e) {
-    if (!e.touches || e.touches.length < 2) {
-      initialPinchDist = 0;
-      if (pinchOverlay) pinchOverlay.style.pointerEvents = 'none';
-    }
-  }
-
-  if (playerBox) {
-    playerBox.addEventListener('touchstart', handlePinchStart, { passive: true });
-    playerBox.addEventListener('touchmove', handlePinchMove, { passive: true });
-    playerBox.addEventListener('touchend', handlePinchEnd, { passive: true });
-  }
-
-  window.addEventListener('touchstart', handlePinchStart, { passive: true });
-  window.addEventListener('touchmove', handlePinchMove, { passive: true });
-  window.addEventListener('touchend', handlePinchEnd, { passive: true });
 });
 
 // ── YOUTUBE PLAYER INIT WITH 100% ORIGINAL YOUTUBE CONTROLS ──
@@ -951,6 +984,7 @@ function clearSearch(e) {
   const input = document.getElementById('searchInput');
   input.value = '';
   document.getElementById('clearBtn').style.display = 'none';
+  hideSuggestions();
   
   input.blur();
   if (document.activeElement) document.activeElement.blur();
@@ -959,6 +993,7 @@ function clearSearch(e) {
 function handleSearchKey(e) {
   if (e.key === 'Enter') {
     e.target.blur();
+    hideSuggestions();
     doSearch();
   }
 }
@@ -969,11 +1004,13 @@ function searchGenre(genreQuery) {
   const si = document.getElementById('searchInput');
   si.value = genreQuery;
   toggleClearBtn();
+  hideSuggestions();
   doSearch();
 }
 
 // ── LIGHTNING FAST SEARCH WITH CLIENT CACHE (0ms SPEED) ──
 async function doSearch() {
+  hideSuggestions();
   const q = document.getElementById('searchInput').value.trim();
   if (!q) return;
 
@@ -1362,6 +1399,7 @@ function switchTab(tab) {
   const genreBar = document.getElementById('ytmGenreBar');
 
   logo.className = 'yt-logo';
+  hideSuggestions();
 
   if (tab === 'home') {
     currentMode = 'youtube';
@@ -1444,6 +1482,7 @@ function handleHardwareBack() {
   const si = document.getElementById('searchInput');
 
   document.activeElement && document.activeElement.blur();
+  hideSuggestions();
 
   if (dlModal.style.display === 'flex') { closeDlModal(); return true; }
   if (ws.classList.contains('is-fullscreen')) {
