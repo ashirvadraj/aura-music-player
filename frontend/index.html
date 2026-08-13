@@ -168,7 +168,13 @@ input, textarea, [contenteditable="true"] {
   width:100%!important;height:100%!important;transition:transform 0.1s ease-out;transform-origin:center center;
 }
 
-/* ── PERFECT 100% HARDWARE FULLSCREEN LANDSCAPE FILL (NO BLACK BARS) ── */
+/* TOUCH OVERLAY GESTURE LAYER OVER YOUTUBE IFRAME FOR 2-FINGER PINCH TO ZOOM */
+.touch-overlay-gesture {
+  position: absolute; inset: 0; z-index: 8;
+  background: transparent; touch-action: none; display: block;
+}
+
+/* ── 100% HARDWARE FULLSCREEN LANDSCAPE FILL (ZERO BLACK BARS) ── */
 @media screen and (orientation: landscape) {
   body.has-open-player .yt-watch-topbar,
   body.has-open-player .yt-watch-info,
@@ -194,7 +200,7 @@ input, textarea, [contenteditable="true"] {
     top: 50% !important; left: 50% !important;
     width: 100vw !important; height: 100vh !important;
     min-width: 100vw !important; min-height: 100vh !important;
-    transform: translate(-50%, -50%) !important;
+    transform: translate(-50%, -50%) scale(1.35) !important;
     object-fit: cover !important; border: none !important;
   }
 }
@@ -360,6 +366,7 @@ input, textarea, [contenteditable="true"] {
 
   <div class="yt-player-box" id="playerBox">
     <div id="ytPlayerContainer"></div>
+    <div class="touch-overlay-gesture" id="touchGestureOverlay"></div>
     <div class="music-album-overlay" id="musicAlbumOverlay">
       <div class="music-album-disc">
         <img src="" id="musicAlbumImg" />
@@ -434,10 +441,11 @@ let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic'
 let searchAbortController = null;
 let seekTimer = null;
 
-// TWO-FINGER PINCH TO ZOOM & BUTTON ZOOM SYSTEM
+// ── NATIVE 2-FINGER TOUCH PINCH TO ZOOM SYSTEM ──
 let pinchScale = 1.0;
 let initialPinchDist = 0;
 let initialScale = 1.0;
+let lastTapTime = 0;
 
 function applyZoom(scaleVal) {
   pinchScale = Math.min(Math.max(scaleVal, 1.0), 3.5); // Clamp zoom between 1.0x and 3.5x
@@ -445,7 +453,7 @@ function applyZoom(scaleVal) {
   if (iframe) {
     const isLandscape = window.innerWidth > window.innerHeight;
     if (isLandscape && document.body.classList.contains('has-open-player')) {
-      iframe.style.transform = `translate(-50%, -50%) scale(${pinchScale})`;
+      iframe.style.transform = `translate(-50%, -50%) scale(${1.35 * pinchScale})`;
     } else {
       iframe.style.transform = `scale(${pinchScale})`;
     }
@@ -463,32 +471,41 @@ function cycleZoomLevel() {
   showToast(`Video Zoom: ${Math.round(pinchScale * 100)}%`);
 }
 
-// SETUP PINCH GESTURE ON PLAYER BOX
+// SETUP PINCH GESTURE ON TOUCH OVERLAY GESTURE LAYER ABOVE IFRAME
 document.addEventListener('DOMContentLoaded', () => {
-  const pBox = document.getElementById('playerBox');
+  const overlay = document.getElementById('touchGestureOverlay');
   
-  pBox.addEventListener('touchstart', (e) => {
+  overlay.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
       initialPinchDist = Math.hypot(
-        e.touches[0].pageX - e.touches[1].pageX,
-        e.touches[0].pageY - e.touches[1].pageY
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
       );
       initialScale = pinchScale;
+    } else if (e.touches.length === 1) {
+      // Handle Double Tap to Zoom / Single Tap to Play Pause
+      const now = Date.now();
+      if (now - lastTapTime < 300) {
+        cycleZoomLevel();
+      } else {
+        togglePlayPause();
+      }
+      lastTapTime = now;
     }
   }, { passive: true });
 
-  pBox.addEventListener('touchmove', (e) => {
+  overlay.addEventListener('touchmove', (e) => {
     if (e.touches.length === 2 && initialPinchDist > 0) {
       const currentDist = Math.hypot(
-        e.touches[0].pageX - e.touches[1].pageX,
-        e.touches[0].pageY - e.touches[1].pageY
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
       );
       const factor = currentDist / initialPinchDist;
       applyZoom(initialScale * factor);
     }
   }, { passive: true });
 
-  pBox.addEventListener('touchend', (e) => {
+  overlay.addEventListener('touchend', (e) => {
     if (e.touches.length < 2) {
       initialPinchDist = 0;
     }
