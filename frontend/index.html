@@ -91,6 +91,20 @@ input, textarea, [contenteditable="true"] {
   padding: .75rem 1rem; font-size: .92rem; color: #eee; border-bottom: 1px solid rgba(255,255,255,.08);
   display: flex; align-items: center; gap: .7rem; cursor: pointer; font-weight: 500;
 }
+/* NON-BLOCKING FLOATING TOP-LEFT ZOOM CHIP (UNCOVERED CC & GEAR ICON AT TOP RIGHT) */
+.player-zoom-chip-bar {
+  position: absolute; top: 10px; left: 10px;
+  z-index: 999999999 !important; display: flex; align-items: center;
+  pointer-events: none;
+}
+.player-zoom-chip {
+  pointer-events: auto !important;
+  background: rgba(0, 0, 0, 0.82); color: #fff; border: 1.5px solid #ff0000;
+  border-radius: 16px; padding: 5px 12px; font-weight: 800; font-size: .8rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,.9); backdrop-filter: blur(8px);
+  cursor: pointer; transition: transform 0.15s ease;
+}
+.player-zoom-chip:active { transform: scale(1.1); }
 .suggestion-item:active { background: #333; color: #fff; }
 
 /* ── MUSIC GENRE CHIPS BAR ── */
@@ -453,6 +467,11 @@ body.audio-mode .music-controls-panel { display: flex !important; }
   <div class="yt-player-box" id="playerBox">
     <div id="zoomWrapper" class="zoom-wrapper">
       <div id="ytPlayerContainer"></div>
+    </div>
+
+    <!-- NON-BLOCKING FLOATING TOP-LEFT ZOOM CHIP (UNCOVERED CC & GEAR ICON AT TOP RIGHT) -->
+    <div class="player-zoom-chip-bar">
+      <button class="player-zoom-chip" onclick="cycleZoomLevel(event)">🔎 Zoom: <span class="player-zoom-lbl">100%</span></button>
     </div>
     <!-- TRANSPARENT PINCH OVERLAY LAYER THAT INTERCEPTS 2-FINGER TOUCHES -->
     <div id="pinchOverlay" style="position:absolute;inset:0;z-index:99;pointer-events:none;"></div>
@@ -872,7 +891,7 @@ function applyZoom(scaleVal) {
     wrapper.style.transform = `scale(${zoomScale})`;
   }
   const pct = Math.round(zoomScale * 100);
-  document.querySelectorAll('.hdr-zoom-lbl, .pill-zoom-lbl').forEach(el => {
+  document.querySelectorAll('.hdr-zoom-lbl, .pill-zoom-lbl, .player-zoom-lbl').forEach(el => {
     el.textContent = `${pct}%`;
   });
   showToast(`Screen Zoom: ${pct}%`);
