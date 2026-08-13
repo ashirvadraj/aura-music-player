@@ -152,12 +152,23 @@ input, textarea, [contenteditable="true"] {
 .yt-nav-item.active{color:#fff;font-weight:700;}
 .yt-nav-icon{font-size:1.2rem;}
 
-/* ── UNIFIED WATCH PLAYER SCREEN ── */
+/* ── UNIFIED WATCH PLAYER SCREEN (USES OFF-SCREEN POSITIONAL MINIMIZE TO PREVENT CHROMIUM AUTO-PAUSE!) ── */
 .yt-watch-screen{
   position:fixed;inset:0;z-index:200;background:var(--bg);
   display:none;flex-direction:column;width:100%;height:100%;overflow-y:auto;
   touch-action:pan-y pinch-zoom;
 }
+
+/* OFF-SCREEN CONTINUOUS BACKGROUND PLAYBACK STATE (DOES NOT USE display:none SO CHROMIUM NEVER PAUSES MUSIC!) */
+.yt-watch-screen.is-minimized {
+  display: flex !important;
+  position: fixed !important;
+  top: -9999px !important; left: -9999px !important;
+  width: 1px !important; height: 1px !important;
+  opacity: 0.001 !important; pointer-events: none !important;
+  z-index: -999 !important; overflow: hidden !important;
+}
+
 .yt-watch-screen.is-fullscreen .yt-watch-topbar,
 .yt-watch-screen.is-fullscreen .yt-watch-info,
 .yt-watch-screen.is-fullscreen .yt-nav { display:none!important; }
@@ -990,6 +1001,7 @@ function openWatch(id, title, artist, thumb) {
 
   const ws = document.getElementById('watchScreen');
   ws.scrollTop = 0;
+  ws.classList.remove('is-minimized');
   ws.style.display = 'flex';
   document.getElementById('miniPlayerBar').style.display = 'none';
   document.body.classList.add('has-open-player');
@@ -1015,7 +1027,7 @@ function openWatch(id, title, artist, thumb) {
   checkAutoOrientation();
 }
 
-// ── CONTINUOUS UNINTERRUPTED BACKGROUND PLAYBACK ON MINIMIZE / GOING BACK ──
+// ── 100% NON-STOP CONTINUOUS BACKGROUND PLAYBACK ON MINIMIZE / GOING BACK ──
 function minimizePlayer() {
   document.activeElement && document.activeElement.blur();
 
@@ -1026,10 +1038,9 @@ function minimizePlayer() {
     } catch(e){}
   }
 
-  // DO NOT PAUSE VIDEO! KEEP IT PLAYING CONTINUOUSLY WHILE NAVIGATING OTHER SECTIONS!
-
+  // USE OFF-SCREEN POSITIONAL MINIMIZE SO CHROMIUM WEBVIEW NEVER PAUSES THE VIDEO OR MUSIC!
   const ws = document.getElementById('watchScreen');
-  ws.style.display = 'none';
+  ws.classList.add('is-minimized');
   document.body.classList.remove('has-open-player');
   document.body.classList.remove('is-landscape');
 
@@ -1041,6 +1052,7 @@ function minimizePlayer() {
 function maximizePlayer() {
   const ws = document.getElementById('watchScreen');
   ws.scrollTop = 0;
+  ws.classList.remove('is-minimized');
   ws.style.display = 'flex';
   document.body.classList.add('has-open-player');
   document.getElementById('miniPlayerBar').style.display = 'none';
@@ -1071,6 +1083,7 @@ function closeWatch() {
   }
 
   const ws = document.getElementById('watchScreen');
+  ws.classList.remove('is-minimized');
   ws.style.display = 'none';
   ws.classList.remove('is-fullscreen');
   document.body.classList.remove('is-landscape');
@@ -1229,7 +1242,10 @@ function handleHardwareBack() {
     document.getElementById('mainNav').style.display = 'flex';
     return true;
   }
-  if (ws.style.display === 'flex') { minimizePlayer(); return true; }
+  if (ws.style.display === 'flex' && !ws.classList.contains('is-minimized')) {
+    minimizePlayer();
+    return true;
+  }
 
   if (si.value.length > 0) {
     clearSearch();
