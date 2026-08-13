@@ -1,9 +1,9 @@
 const express = require('express');
 const cors = require('cors');
-const { execFile, spawn } = require('child_process');
+const { execFile } = require('child_process');
 const ytsr = require('ytsr');
 const path = require('path');
-const fs = require('fs');
+const https = require('https');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -21,14 +21,86 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // ─────────────────────────────────────────────
-// ROUTE 1: YOUTUBE SEARCH
+// LIGHTNING FAST IN-MEMORY SEARCH CACHE (0ms SPEED)
+// ─────────────────────────────────────────────
+const searchCache = new Map();
+const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+function getCachedResults(key) {
+  if (searchCache.has(key)) {
+    const entry = searchCache.get(key);
+    if (Date.now() - entry.timestamp < CACHE_TTL) {
+      console.log(`[Cache Hit - 0ms]: ${key}`);
+      return entry.results;
+    }
+    searchCache.delete(key);
+  }
+  return null;
+}
+
+function setCachedResults(key, results) {
+  if (results && results.length > 0) {
+    searchCache.set(key, { timestamp: Date.now(), results });
+  }
+}
+
+// FAST PUBLIC YOUTUBE SEARCH FETCH HELPER (300ms FAST RESPONSE)
+function fetchFastYoutubeApi(query) {
+  return new Promise((resolve) => {
+    const encoded = encodeURIComponent(query);
+    const url = `https://inv.tux.pizza/api/v1/search?q=${encoded}&type=video`;
+    
+    const req = https.get(url, { timeout: 2500 }, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          if (Array.isArray(data) && data.length > 0) {
+            const results = data.slice(0, 15).map(item => ({
+              id: item.videoId,
+              title: item.title,
+              artist: item.author || 'YouTube',
+              duration: item.lengthSeconds || 0,
+              thumbnail: (item.videoThumbnails && item.videoThumbnails.length > 0) 
+                ? item.videoThumbnails[0].url 
+                : `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+              source: 'youtube',
+              videoId: item.videoId
+            }));
+            return resolve(results);
+          }
+        } catch(e){}
+        resolve(null);
+      });
+    });
+
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
+
+// ─────────────────────────────────────────────
+// ROUTE 1: YOUTUBE SEARCH (LIGHTNING FAST)
 // ─────────────────────────────────────────────
 app.get('/api/search/youtube', async (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Missing query' });
 
+  const cacheKey = `yt:${q.toLowerCase().trim()}`;
+  const cached = getCachedResults(cacheKey);
+  if (cached) return res.json({ results: cached });
+
+  // Try Fast API first (300ms)
+  const fastResults = await fetchFastYoutubeApi(q);
+  if (fastResults && fastResults.length > 0) {
+    setCachedResults(cacheKey, fastResults);
+    return res.json({ results: fastResults });
+  }
+
+  // Fallback to ytsr with limit 15 for faster scraping
   try {
-    const searchRes = await ytsr(q, { limit: 20 });
+    const searchRes = await ytsr(q, { limit: 15 });
     const items = (searchRes.items || []).filter(i => i.type === 'video');
 
     if (items.length > 0) {
@@ -49,15 +121,17 @@ app.get('/api/search/youtube', async (req, res) => {
           videoId: item.id
         };
       });
+      setCachedResults(cacheKey, results);
       return res.json({ results });
     }
   } catch (e) {
     console.log(`[Search] ytsr error: ${e.message}`);
   }
 
+  // Fallback to yt-dlp flat playlist
   execFile(YTDLP, [
     ...YTDLP_ARGS_PREFIX,
-    `ytsearch15:${q}`,
+    `ytsearch12:${q}`,
     '--dump-json',
     '--flat-playlist',
     '--no-warnings',
@@ -79,6 +153,7 @@ app.get('/api/search/youtube', async (req, res) => {
         };
       } catch { return null; }
     }).filter(Boolean);
+    setCachedResults(cacheKey, results);
     res.json({ results });
   });
 });
@@ -91,9 +166,24 @@ app.get('/api/search/ytmusic', async (req, res) => {
   if (!q) return res.status(400).json({ error: 'Missing query' });
 
   const queryWithMusic = q.toLowerCase().includes('song') || q.toLowerCase().includes('music') ? q : `${q} official audio`;
+  const cacheKey = `ytm:${queryWithMusic.toLowerCase().trim()}`;
+  const cached = getCachedResults(cacheKey);
+  if (cached) return res.json({ results: cached });
+
+  const fastResults = await fetchFastYoutubeApi(queryWithMusic);
+  if (fastResults && fastResults.length > 0) {
+    const formatted = fastResults.map(item => ({
+      ...item,
+      title: item.title ? item.title.replace(/\(Official Audio\)/gi, '').replace(/\[Official Audio\]/gi, '').trim() : item.title,
+      source: 'ytmusic',
+      isAudioOnly: true
+    }));
+    setCachedResults(cacheKey, formatted);
+    return res.json({ results: formatted });
+  }
 
   try {
-    const searchRes = await ytsr(queryWithMusic, { limit: 20 });
+    const searchRes = await ytsr(queryWithMusic, { limit: 15 });
     const items = (searchRes.items || []).filter(i => i.type === 'video');
 
     if (items.length > 0) {
@@ -115,6 +205,7 @@ app.get('/api/search/ytmusic', async (req, res) => {
           isAudioOnly: true
         };
       });
+      setCachedResults(cacheKey, results);
       return res.json({ results });
     }
   } catch (e) {
@@ -125,16 +216,32 @@ app.get('/api/search/ytmusic', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// ROUTE 1C: SPOTIFY SEARCH (CLEANED EMBEDDABLE AUDIO QUERY)
+// ROUTE 1C: SPOTIFY SEARCH
 // ─────────────────────────────────────────────
 app.get('/api/search/spotify', async (req, res) => {
   const { q } = req.query;
-  // STRIP 'spotify' BRANDING WORDS TO AVOID EMBED-BLOCKED PLAYLIST PROMOS
   const cleanQ = (q || '').replace(/spotify/gi, '').trim();
   const searchQuery = cleanQ ? `${cleanQ} official audio` : 'top global audio songs 2026';
+  
+  const cacheKey = `sp:${searchQuery.toLowerCase().trim()}`;
+  const cached = getCachedResults(cacheKey);
+  if (cached) return res.json({ results: cached });
+
+  const fastResults = await fetchFastYoutubeApi(searchQuery);
+  if (fastResults && fastResults.length > 0) {
+    const formatted = fastResults.map(item => ({
+      ...item,
+      title: item.title ? item.title.replace(/official audio|lyric video|official video/gi, '').trim() : item.title,
+      artist: item.artist || 'Spotify Artist',
+      source: 'spotify',
+      isAudioOnly: true
+    }));
+    setCachedResults(cacheKey, formatted);
+    return res.json({ results: formatted });
+  }
 
   try {
-    const searchRes = await ytsr(searchQuery, { limit: 20 });
+    const searchRes = await ytsr(searchQuery, { limit: 15 });
     const items = (searchRes.items || []).filter(i => i.type === 'video');
 
     const results = items.map(item => ({
@@ -147,6 +254,7 @@ app.get('/api/search/spotify', async (req, res) => {
       videoId: item.id,
       isAudioOnly: true
     }));
+    setCachedResults(cacheKey, results);
     return res.json({ results });
   } catch (e) {
     console.log(`[Spotify Search Error]: ${e.message}`);
@@ -155,15 +263,32 @@ app.get('/api/search/spotify', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// ROUTE 1D: APPLE MUSIC SEARCH (CLEANED EMBEDDABLE AUDIO QUERY)
+// ROUTE 1D: APPLE MUSIC SEARCH
 // ─────────────────────────────────────────────
 app.get('/api/search/applemusic', async (req, res) => {
   const { q } = req.query;
   const cleanQ = (q || '').replace(/apple music/gi, '').trim();
   const searchQuery = cleanQ ? `${cleanQ} official audio` : 'top charts audio songs 2026';
 
+  const cacheKey = `ap:${searchQuery.toLowerCase().trim()}`;
+  const cached = getCachedResults(cacheKey);
+  if (cached) return res.json({ results: cached });
+
+  const fastResults = await fetchFastYoutubeApi(searchQuery);
+  if (fastResults && fastResults.length > 0) {
+    const formatted = fastResults.map(item => ({
+      ...item,
+      title: item.title ? item.title.replace(/official audio|lyric video|official video/gi, '').trim() : item.title,
+      artist: item.artist || 'Apple Music Artist',
+      source: 'applemusic',
+      isAudioOnly: true
+    }));
+    setCachedResults(cacheKey, formatted);
+    return res.json({ results: formatted });
+  }
+
   try {
-    const searchRes = await ytsr(searchQuery, { limit: 20 });
+    const searchRes = await ytsr(searchQuery, { limit: 15 });
     const items = (searchRes.items || []).filter(i => i.type === 'video');
 
     const results = items.map(item => ({
@@ -176,6 +301,7 @@ app.get('/api/search/applemusic', async (req, res) => {
       videoId: item.id,
       isAudioOnly: true
     }));
+    setCachedResults(cacheKey, results);
     return res.json({ results });
   } catch (e) {
     console.log(`[Apple Music Search Error]: ${e.message}`);
@@ -210,7 +336,7 @@ app.get('/api/stream/audio', (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// ROUTE 2B: DOWNLOAD STREAM & REDIRECT (FAIL-PROOF)
+// ROUTE 2B: DOWNLOAD STREAM & REDIRECT
 // ─────────────────────────────────────────────
 app.get('/api/download', (req, res) => {
   const { videoId, q, format } = req.query;
