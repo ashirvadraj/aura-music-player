@@ -469,6 +469,7 @@ body.audio-mode .music-controls-panel { display: flex !important; }
     <div id="zoomWrapper" class="zoom-wrapper">
       <div id="ytPlayerContainer"></div>
     </div>
+    <div id="pinchOverlay" style="position:absolute;inset:0;z-index:99;pointer-events:none;"></div>
 
     <div class="music-album-overlay" id="musicAlbumOverlay">
       <div class="music-album-disc">
@@ -914,33 +915,33 @@ function applyZoom(scaleVal) {
 }
 
 function initPinchToZoom() {
-  const box = document.getElementById('playerBox');
-  if (!box) return;
-
-  box.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 2) {
-      e.preventDefault();
+  window.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length === 2) {
       initialPinchDist = getTouchDistance(e.touches[0], e.touches[1]);
       baseScale = zoomScale;
+      const ov = document.getElementById('pinchOverlay');
+      if (ov) ov.style.pointerEvents = 'auto';
     }
-  }, { passive: false });
+  }, { capture: true, passive: true });
 
-  box.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 2) {
-      e.preventDefault();
+  window.addEventListener('touchmove', (e) => {
+    if (e.touches && e.touches.length === 2) {
+      if (e.cancelable) e.preventDefault();
       const currentDist = getTouchDistance(e.touches[0], e.touches[1]);
       if (initialPinchDist > 0) {
         const factor = currentDist / initialPinchDist;
         applyZoom(baseScale * factor);
       }
     }
-  }, { passive: false });
+  }, { capture: true, passive: false });
 
-  box.addEventListener('touchend', (e) => {
-    if (e.touches.length < 2) {
+  window.addEventListener('touchend', (e) => {
+    if (!e.touches || e.touches.length < 2) {
       initialPinchDist = 0;
+      const ov = document.getElementById('pinchOverlay');
+      if (ov) ov.style.pointerEvents = 'none';
     }
-  });
+  }, { capture: true });
 }
 
 function getTouchDistance(t1, t2) {
