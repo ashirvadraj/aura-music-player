@@ -957,6 +957,7 @@ function onPlayerStateChange(e) {
   const miniBtn = document.getElementById('miniPlayBtn');
 
   if (e.data === YT.PlayerState.PLAYING) {
+    isUserPaused = false;
     if (btn) btn.textContent = '⏸ Pause';
     if (miniBtn) miniBtn.textContent = '⏸';
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
@@ -964,17 +965,21 @@ function onPlayerStateChange(e) {
     startBgAudioKeeper();
     setupMediaSession();
   } else if (e.data === YT.PlayerState.PAUSED) {
-    // IF PAUSED BY LOCK SCREEN OR MINIMIZE SYSTEM AND NOT EXPLICIT USER PAUSE, AUTO-RESUME IMMEDIATELY!
-    if (!isUserPaused && currentVideo) {
-      console.log('[System Pause Intercepted]: Resuming playback!');
+    if (document.hidden && !isUserPaused && currentVideo) {
+      // Screen lock / app in background: keep playback going
       setTimeout(() => {
         if (ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();
       }, 50);
     } else {
+      // App is open: User clicked YouTube native Pause button!
+      isUserPaused = true;
       if (btn) btn.textContent = '▶ Play';
       if (miniBtn) miniBtn.textContent = '▶';
       if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
       stopSeekTimer();
+      if (window.AndroidNative && window.AndroidNative.stopNativeAudio) {
+        window.AndroidNative.stopNativeAudio();
+      }
     }
   }
 }
