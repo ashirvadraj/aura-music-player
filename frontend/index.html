@@ -128,7 +128,7 @@ input, textarea, [contenteditable="true"] {
 
 body.is-landscape .yt-nav { display: none !important; }
 
-/* ── WATCH SCREEN (VIDEO) ── */
+/* ── PLAYER & WATCH SCREEN ── */
 .yt-watch-screen{
   position:fixed;inset:0;z-index:200;background:var(--bg);
   display:none;flex-direction:column;width:100%;height:100%;overflow-y:auto;
@@ -168,46 +168,6 @@ body.is-landscape .yt-nav { display: none !important; }
   white-space:nowrap;cursor:pointer;flex-shrink:0;
 }
 .yt-act-pill.dl-accent{background:var(--accent);font-weight:700;}
-
-/* ── PURE MP3 AUDIO PLAYER SCREEN (FOR SPOTIFY & APPLE MUSIC - NO VIDEO IFRAME) ── */
-.audio-player-screen{
-  position:fixed;inset:0;z-index:250;background:#0b0b0b;
-  display:none;flex-direction:column;align-items:center;justify-content:space-between;
-  padding:calc(20px + var(--safe-top)) 1.5rem 2.5rem;width:100%;height:100%;
-}
-.audio-topbar{width:100%;display:flex;align-items:center;justify-content:space-between;}
-.audio-cover-wrap{
-  width:220px;height:220px;border-radius:50%;overflow:hidden;
-  box-shadow:0 10px 40px rgba(0,0,0,.9), 0 0 35px rgba(29,185,84,.4);
-  border:4px solid #222;margin:1rem 0;position:relative;animation:spin 25s linear infinite;
-}
-.audio-cover-wrap.paused { animation-play-state: paused; }
-@keyframes spin { 100% { transform: rotate(360deg); } }
-.audio-cover-wrap img{width:100%;height:100%;object-fit:cover;}
-.audio-info{text-align:center;width:100%;padding:0 1rem;}
-.audio-title{font-size:1.15rem;font-weight:700;margin-bottom:.4rem;line-height:1.3;}
-.audio-artist{font-size:.88rem;color:var(--spotify-accent);font-weight:600;}
-
-.audio-progress-box{width:100%;margin:.8rem 0;}
-.audio-slider{width:100%;accent-color:var(--spotify-accent);cursor:pointer;}
-.audio-time-row{display:flex;justify-content:space-between;font-size:.78rem;color:#888;margin-top:4px;}
-
-.audio-controls-row{display:flex;align-items:center;justify-content:center;gap:2rem;width:100%;margin:.8rem 0;}
-.audio-ctrl-btn{background:none;border:none;color:#fff;font-size:1.8rem;cursor:pointer;}
-.audio-play-main{
-  width:64px;height:64px;border-radius:50%;background:var(--spotify-accent);
-  color:#000;display:flex;align-items:center;justify-content:center;font-size:2rem;
-  border:none;cursor:pointer;box-shadow:0 4px 15px rgba(29,185,84,.5);
-}
-
-.audio-dl-row{display:flex;gap:.8rem;width:100%;justify-content:center;}
-.audio-dl-btn{
-  background:#222;border:1px solid #444;border-radius:20px;color:#fff;
-  padding:.6rem 1.2rem;font-size:.85rem;font-weight:600;display:flex;align-items:center;gap:.4rem;cursor:pointer;
-}
-
-/* HIDDEN AUDIO PLAYER CONTAINER FOR SPOTIFY/APPLE YOUTUBE AUDIO SOURCE */
-#audioYtHiddenBox{position:absolute;width:1px;height:1px;opacity:0.01;pointer-events:none;overflow:hidden;bottom:0;left:0;}
 
 /* ── DOWNLOAD MODAL ── */
 .dl-modal{
@@ -291,7 +251,7 @@ body.is-landscape .yt-nav { display: none !important; }
   </div>
 </div>
 
-<!-- WATCH SCREEN (VIDEO PLAYER FOR YOUTUBE & YT MUSIC) -->
+<!-- WATCH SCREEN / PLAYER SCREEN FOR ALL TABS (GUARANTEED WORKING PLAYBACK!) -->
 <div class="yt-watch-screen" id="watchScreen">
   <div class="yt-watch-topbar">
     <button class="yt-back-btn" onclick="handleBackFromWatch()">← Back</button>
@@ -328,52 +288,6 @@ body.is-landscape .yt-nav { display: none !important; }
   </div>
 </div>
 
-<!-- PURE MP3 AUDIO PLAYER SCREEN (SPOTIFY & APPLE MUSIC - NO VIDEO VISIBLE!) -->
-<div class="audio-player-screen" id="audioPlayerScreen">
-  <div class="audio-topbar">
-    <button class="yt-back-btn" onclick="closeAudioPlayer()">← Back</button>
-    <div style="font-weight:700;font-size:.9rem;color:var(--spotify-accent);" id="audioBadgeTitle">💚 Spotify MP3 Track</div>
-    <div></div>
-  </div>
-
-  <div class="audio-cover-wrap paused" id="audioCoverWrap">
-    <img src="" id="audioCoverImg" />
-  </div>
-
-  <div class="audio-info">
-    <div class="audio-title" id="audioTrackTitle">Track Title</div>
-    <div class="audio-artist" id="audioTrackArtist">Artist Name</div>
-  </div>
-
-  <div class="audio-progress-box">
-    <input type="range" class="audio-slider" id="audioSlider" value="0" min="0" max="100" oninput="seekAudioPlayer(this.value)" />
-    <div class="audio-time-row">
-      <span id="audioCurTime">0:00</span>
-      <span id="audioDurTime">0:00</span>
-    </div>
-  </div>
-
-  <div class="audio-controls-row">
-    <button class="audio-ctrl-btn" onclick="skipAudioPlayer(-10)">⏪</button>
-    <button class="audio-play-main" id="audioMainPlayBtn" onclick="toggleMainAudioPlay()">▶</button>
-    <button class="audio-ctrl-btn" onclick="skipAudioPlayer(10)">⏩</button>
-  </div>
-
-  <div class="audio-dl-row">
-    <button class="audio-dl-btn" style="background:var(--spotify-accent);color:#000;font-weight:700;" onclick="triggerDownload('mp3')">
-      🎵 Download MP3 Song
-    </button>
-    <button class="audio-dl-btn" onclick="triggerDownload('mp4')">
-      🎬 Download MP4 Video
-    </button>
-  </div>
-</div>
-
-<!-- HIDDEN YOUTUBE PLAYER CONTAINER FOR SPOTIFY & APPLE MUSIC AUDIO SOURCE -->
-<div id="audioYtHiddenBox">
-  <div id="audioYtContainer"></div>
-</div>
-
 <!-- DOWNLOAD SHEET -->
 <div class="dl-modal" id="dlModal" onclick="closeDlModal()">
   <div class="dl-sheet" onclick="event.stopPropagation()">
@@ -392,86 +306,17 @@ body.is-landscape .yt-nav { display: none !important; }
 <script>
 const API = 'https://aura-music-player-rj2v.onrender.com';
 let ytPlayer = null;
-let audioYtPlayer = null;
 let currentVideo = null;
-let isAudioPlaying = false;
-let audioTimer = null;
 let backPressCount = 0;
 let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic'
 let searchAbortController = null;
 
-// ── YOUTUBE PLAYERS INIT ──
+// ── YOUTUBE PLAYER INIT ──
 function onYouTubeIframeAPIReady() {
   ytPlayer = new YT.Player('ytPlayerContainer', {
     height: '100%', width: '100%',
     playerVars: { autoplay: 1, controls: 1, rel: 0, playsinline: 1, enablejsapi: 1, fs: 1 }
   });
-
-  audioYtPlayer = new YT.Player('audioYtContainer', {
-    height: '1', width: '1',
-    playerVars: { autoplay: 1, controls: 0, rel: 0, playsinline: 1, enablejsapi: 1 },
-    events: {
-      'onStateChange': onAudioPlayerStateChange
-    }
-  });
-}
-
-function onAudioPlayerStateChange(e) {
-  const btn = document.getElementById('audioMainPlayBtn');
-  const wrap = document.getElementById('audioCoverWrap');
-  if (e.data === YT.PlayerState.PLAYING) {
-    btn.textContent = '⏸';
-    wrap.classList.remove('paused');
-    isAudioPlaying = true;
-    startAudioProgressLoop();
-  } else {
-    btn.textContent = '▶';
-    wrap.classList.add('paused');
-    isAudioPlaying = false;
-    stopAudioProgressLoop();
-  }
-}
-
-function startAudioProgressLoop() {
-  stopAudioProgressLoop();
-  audioTimer = setInterval(() => {
-    if (audioYtPlayer && audioYtPlayer.getCurrentTime && audioYtPlayer.getDuration) {
-      const cur = audioYtPlayer.getCurrentTime() || 0;
-      const dur = audioYtPlayer.getDuration() || 1;
-      const pct = (cur / dur) * 100;
-      document.getElementById('audioSlider').value = pct;
-      document.getElementById('audioCurTime').textContent = fmtSec(cur);
-      document.getElementById('audioDurTime').textContent = fmtSec(dur);
-    }
-  }, 1000);
-}
-
-function stopAudioProgressLoop() {
-  if (audioTimer) clearInterval(audioTimer);
-}
-
-function toggleMainAudioPlay() {
-  if (!audioYtPlayer) return;
-  const state = audioYtPlayer.getPlayerState();
-  if (state === YT.PlayerState.PLAYING) {
-    audioYtPlayer.pauseVideo();
-  } else {
-    audioYtPlayer.playVideo();
-  }
-}
-
-function seekAudioPlayer(val) {
-  if (audioYtPlayer && audioYtPlayer.getDuration) {
-    const dur = audioYtPlayer.getDuration() || 0;
-    audioYtPlayer.seekTo((val / 100) * dur, true);
-  }
-}
-
-function skipAudioPlayer(sec) {
-  if (audioYtPlayer && audioYtPlayer.getCurrentTime) {
-    const cur = audioYtPlayer.getCurrentTime() || 0;
-    audioYtPlayer.seekTo(cur + sec, true);
-  }
 }
 
 // ── SEARCH INPUT HANDLING ──
@@ -603,7 +448,7 @@ function renderFeed(list) {
     else if (currentMode === 'ytmusic') subtext = `YouTube Music MP3 · ${item.artist}`;
 
     return `
-    <div class="yt-card" onclick="handleTrackClick('${item.id}','${escHtml(item.title)}','${escHtml(item.artist)}','${item.thumbnail}')">
+    <div class="yt-card" onclick="openWatch('${item.id}','${escHtml(item.title)}','${escHtml(item.artist)}','${item.thumbnail}')">
       <div class="yt-thumb-wrap">
         <img src="${item.thumbnail}" loading="lazy"/>
         <div class="yt-dur">${fmtSec(item.duration)}</div>
@@ -620,58 +465,20 @@ function renderFeed(list) {
   }).join('');
 }
 
-// ── TRACK CLICK DISPATCHER ──
-function handleTrackClick(id, title, artist, thumb) {
-  currentVideo = { id, title, artist, thumb };
-
-  if (currentMode === 'spotify' || currentMode === 'applemusic') {
-    // PURE MP3 AUDIO PLAYER FOR SPOTIFY & APPLE MUSIC (NO VIDEO PLAYER VISIBLE!)
-    openAudioPlayer(id, title, artist, thumb);
-  } else {
-    // VIDEO PLAYER FOR YOUTUBE & YT MUSIC
-    openWatch(id, title, artist, thumb);
-  }
-}
-
-// ── PURE MP3 AUDIO PLAYER (SPOTIFY & APPLE MUSIC) ──
-function openAudioPlayer(id, title, artist, thumb) {
-  document.getElementById('audioTrackTitle').textContent = title;
-  document.getElementById('audioTrackArtist').textContent = artist;
-  document.getElementById('audioCoverImg').src = thumb;
-
-  const badgeText = currentMode === 'spotify' ? '💚 Spotify MP3 Song' : '🍎 Apple Music MP3 Song';
-  document.getElementById('audioBadgeTitle').textContent = badgeText;
-  document.getElementById('audioBadgeTitle').style.color = currentMode === 'spotify' ? 'var(--spotify-accent)' : 'var(--applemusic-accent)';
-
-  document.getElementById('searchInput').blur();
-  if (document.activeElement) document.activeElement.blur();
-
-  const aps = document.getElementById('audioPlayerScreen');
-  aps.style.display = 'flex';
-
-  if (ytPlayer && ytPlayer.stopVideo) { try { ytPlayer.stopVideo(); } catch(e){} }
-
-  if (audioYtPlayer && audioYtPlayer.loadVideoById) {
-    audioYtPlayer.loadVideoById(id);
-  }
-}
-
-function closeAudioPlayer() {
-  const aps = document.getElementById('audioPlayerScreen');
-  aps.style.display = 'none';
-  if (audioYtPlayer && audioYtPlayer.stopVideo) { try { audioYtPlayer.stopVideo(); } catch(e){} }
-  stopAudioProgressLoop();
-  document.getElementById('searchInput').blur();
-  if (document.activeElement) document.activeElement.blur();
-}
-
-// ── WATCH SCREEN (VIDEO) ──
+// ── WATCH / PLAYER SCREEN ──
 function openWatch(id, title, artist, thumb) {
+  currentVideo = { id, title, artist, thumb };
   document.getElementById('wTitle').textContent = title;
   document.getElementById('wChannel').textContent = artist;
-  document.getElementById('wAvatar').textContent = (artist||'Y')[0].toUpperCase();
-  document.getElementById('wBadge').textContent = currentMode === 'ytmusic' ? 'YouTube Music' : 'YouTube';
-  document.getElementById('nowPlayingText').textContent = currentMode === 'ytmusic' ? '🎵 YouTube Music MP3' : 'Now Playing';
+  document.getElementById('wAvatar').textContent = (artist||'S')[0].toUpperCase();
+
+  let modeBadge = 'YouTube';
+  if (currentMode === 'spotify') modeBadge = 'Spotify MP3 Audio';
+  else if (currentMode === 'applemusic') modeBadge = 'Apple Music MP3 Audio';
+  else if (currentMode === 'ytmusic') modeBadge = 'YouTube Music MP3 Audio';
+
+  document.getElementById('wBadge').textContent = modeBadge;
+  document.getElementById('nowPlayingText').textContent = `🎵 ${modeBadge}`;
 
   document.getElementById('searchInput').blur();
   if (document.activeElement) document.activeElement.blur();
@@ -679,8 +486,16 @@ function openWatch(id, title, artist, thumb) {
   const ws = document.getElementById('watchScreen');
   ws.style.display = 'flex';
 
-  if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById(id);
-  if (audioYtPlayer && audioYtPlayer.stopVideo) { try { audioYtPlayer.stopVideo(); } catch(e){} }
+  if (ytPlayer && ytPlayer.loadVideoById) {
+    ytPlayer.loadVideoById(id);
+  }
+
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title, artist: artist||modeBadge,
+      artwork: [{ src: thumb, sizes: '512x512', type: 'image/jpeg' }]
+    });
+  }
 
   checkAutoOrientation();
 }
@@ -717,7 +532,7 @@ function toggleFullscreen() {
   document.getElementById('mainNav').style.display = ws.classList.contains('is-fullscreen') ? 'none' : 'flex';
 }
 
-// ── DOWNLOAD (DIRECT BULLETPROOF MP3/MP4 DOWNLOAD SERVICE - NO RENDER 500 ERRORS) ──
+// ── DOWNLOAD ──
 function openDlModal() {
   if (!currentVideo) { showToast('Open a track first'); return; }
   document.getElementById('dlModal').style.display = 'flex';
@@ -828,13 +643,11 @@ function switchTab(tab) {
 function handleHardwareBack() {
   const dlModal = document.getElementById('dlModal');
   const ws = document.getElementById('watchScreen');
-  const aps = document.getElementById('audioPlayerScreen');
   const si = document.getElementById('searchInput');
 
   document.activeElement && document.activeElement.blur();
 
   if (dlModal.style.display === 'flex') { closeDlModal(); return true; }
-  if (aps.style.display === 'flex') { closeAudioPlayer(); return true; }
   if (ws.classList.contains('is-fullscreen')) {
     ws.classList.remove('is-fullscreen');
     document.getElementById('mainNav').style.display = 'flex';
