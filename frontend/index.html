@@ -43,9 +43,12 @@ input, textarea, [contenteditable="true"] {
 .yt-logo.spotify .yt-logo-icon::after{content:'💚';border:none;font-size:.8rem;margin:0;}
 .yt-logo.applemusic .yt-logo-icon{background:var(--applemusic-accent);border-radius:50%;width:26px;height:26px;}
 .yt-logo.applemusic .yt-logo-icon::after{content:'🍎';border:none;font-size:.8rem;margin:0;}
+.yt-logo.favorites .yt-logo-icon{background:#ff2d55;border-radius:50%;width:26px;height:26px;}
+.yt-logo.favorites .yt-logo-icon::after{content:'❤️';border:none;font-size:.8rem;margin:0;}
 
 .yt-hdr-actions{display:flex;align-items:center;gap:1.2rem;}
-.yt-hdr-icon{font-size:1.2rem;cursor:pointer;color:var(--text);background:none;border:none;}
+.yt-hdr-icon{font-size:1.2rem;cursor:pointer;color:var(--text);background:none;border:none;display:flex;align-items:center;gap:4px;}
+.love-badge-count{background:#ff2d55;color:#fff;font-size:.7rem;font-weight:700;padding:2px 6px;border-radius:10px;}
 
 /* ── SEARCH BAR ── */
 .yt-search-bar{
@@ -83,7 +86,7 @@ input, textarea, [contenteditable="true"] {
 .yt-feed{flex:1;overflow-y:auto;padding-bottom:120px;}
 
 /* ── CARD LAYOUTS ── */
-.yt-card{margin-bottom:1.2rem;cursor:pointer;}
+.yt-card{margin-bottom:1.2rem;cursor:pointer;position:relative;}
 .yt-thumb-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#1e1e1e;}
 .yt-thumb-wrap img{width:100%;height:100%;object-fit:cover;}
 .yt-dur{
@@ -106,6 +109,15 @@ input, textarea, [contenteditable="true"] {
   background:var(--applemusic-accent);color:#fff;font-size:.7rem;font-weight:700;
   padding:3px 7px;border-radius:4px;display:flex;align-items:center;gap:3px;
 }
+/* CARD LOVE HEART BUTTON */
+.card-love-btn{
+  position:absolute;top:8px;right:8px;z-index:15;
+  background:rgba(0,0,0,.65);border:none;border-radius:50%;
+  width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;cursor:pointer;backdrop-filter:blur(6px);transition:transform .2s;
+}
+.card-love-btn:active{transform:scale(1.25);}
+.card-love-btn.is-loved{background:rgba(255,45,85,.85);color:#fff;}
 
 .yt-details{display:flex;gap:.8rem;padding:.8rem 1rem 0;}
 .yt-avatar{width:36px;height:36px;border-radius:50%;background:#333;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;}
@@ -135,10 +147,10 @@ input, textarea, [contenteditable="true"] {
 }
 .yt-nav-item{
   flex:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;font-size:.7rem;color:var(--muted);cursor:pointer;pointer-events:auto;
+  gap:2px;font-size:.68rem;color:var(--muted);cursor:pointer;pointer-events:auto;
 }
 .yt-nav-item.active{color:#fff;font-weight:700;}
-.yt-nav-icon{font-size:1.3rem;}
+.yt-nav-icon{font-size:1.2rem;}
 
 /* ── UNIFIED WATCH PLAYER SCREEN ── */
 .yt-watch-screen{
@@ -163,9 +175,17 @@ input, textarea, [contenteditable="true"] {
   width:100%;aspect-ratio:16/9;background:#000;position:relative;z-index:10;
   overflow:hidden;touch-action:none;
 }
+
+/* 100% WORKING ZOOM WRAPPER CONTAINER */
+.zoom-wrapper {
+  width:100%;height:100%;
+  transition:transform 0.15s ease-out;
+  transform-origin:center center;
+  position:relative;
+}
 #ytPlayerContainer{width:100%;height:100%;border:none;overflow:hidden;position:relative;}
 #ytPlayerContainer iframe{
-  width:100%!important;height:100%!important;transition:transform 0.1s ease-out;transform-origin:center center;
+  width:100%!important;height:100%!important;border:none!important;
 }
 
 /* TOUCH OVERLAY GESTURE LAYER OVER YOUTUBE IFRAME FOR 2-FINGER PINCH TO ZOOM */
@@ -174,7 +194,7 @@ input, textarea, [contenteditable="true"] {
   background: transparent; touch-action: none; display: block;
 }
 
-/* ── 100% HARDWARE FULLSCREEN LANDSCAPE FILL (ZERO BLACK BARS) ── */
+/* ── 100% HARDWARE FULLSCREEN LANDSCAPE FILL ── */
 @media screen and (orientation: landscape) {
   body.has-open-player .yt-watch-topbar,
   body.has-open-player .yt-watch-info,
@@ -185,6 +205,7 @@ input, textarea, [contenteditable="true"] {
 
   body.has-open-player #watchScreen,
   body.has-open-player .yt-player-box,
+  body.has-open-player #zoomWrapper,
   body.has-open-player #ytPlayerContainer {
     position: fixed !important;
     top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
@@ -200,7 +221,7 @@ input, textarea, [contenteditable="true"] {
     top: 50% !important; left: 50% !important;
     width: 100vw !important; height: 100vh !important;
     min-width: 100vw !important; min-height: 100vh !important;
-    transform: translate(-50%, -50%) scale(1.35) !important;
+    transform: translate(-50%, -50%) !important;
     object-fit: cover !important; border: none !important;
   }
 }
@@ -248,13 +269,25 @@ input, textarea, [contenteditable="true"] {
 .yt-chan-left{display:flex;align-items:center;gap:.7rem;}
 .yt-sub-btn{background:#fff;color:#000;border:none;border-radius:18px;padding:.45rem 1rem;font-size:.85rem;font-weight:700;cursor:pointer;}
 
-.yt-actions-scroll{display:flex;gap:.6rem;overflow-x:auto;padding-bottom:.5rem;scrollbar-width:none;}
+.yt-actions-scroll{display:flex;gap:.6rem;overflow-x:auto;padding-bottom:.5rem;scrollbar-width:none;align-items:center;}
 .yt-act-pill{
   background:var(--pill-bg);border:none;border-radius:18px;color:#fff;
   padding:.5rem 1rem;font-size:.82rem;font-weight:500;display:flex;align-items:center;gap:.4rem;
   white-space:nowrap;cursor:pointer;flex-shrink:0;
 }
 .yt-act-pill.dl-accent{background:var(--accent);font-weight:700;}
+.yt-act-pill.love-pill-btn.is-loved{background:#ff2d55;color:#fff;font-weight:700;}
+
+/* ZOOM CONTROLS IN ACTIONS BAR */
+.zoom-controls-group{
+  display:flex;align-items:center;gap:.4rem;background:#181818;
+  border:1px solid #333;border-radius:18px;padding:2px 8px;flex-shrink:0;
+}
+.zoom-btn-chip{
+  background:none;border:none;color:#aaa;font-size:.78rem;font-weight:600;
+  padding:4px 8px;border-radius:12px;cursor:pointer;
+}
+.zoom-btn-chip.active{background:#ff0000;color:#fff;}
 
 /* ── DOWNLOAD MODAL ── */
 .dl-modal{
@@ -291,7 +324,9 @@ input, textarea, [contenteditable="true"] {
     </div>
     <div class="yt-hdr-actions">
       <button class="yt-hdr-icon" onclick="focusSearch()">🔍</button>
-      <button class="yt-hdr-icon">🔔</button>
+      <button class="yt-hdr-icon" onclick="switchTab('favorites')" title="❤️ Loved Songs Playlist">
+        ❤️ <span class="love-badge-count" id="loveCountBadge">0</span>
+      </button>
     </div>
   </div>
 
@@ -336,7 +371,7 @@ input, textarea, [contenteditable="true"] {
     </div>
   </div>
 
-  <!-- BOTTOM NAV BAR (HOME, YT MUSIC, SPOTIFY, APPLE MUSIC) -->
+  <!-- BOTTOM NAV BAR (HOME, YT MUSIC, SPOTIFY, APPLE MUSIC, FAVORITES) -->
   <div class="yt-nav" id="mainNav">
     <div class="yt-nav-item active" id="navHome" onclick="switchTab('home')">
       <span class="yt-nav-icon">🏠</span>Home
@@ -350,22 +385,28 @@ input, textarea, [contenteditable="true"] {
     <div class="yt-nav-item" id="navApple" onclick="switchTab('applemusic')">
       <span class="yt-nav-icon">🍎</span>Apple Music
     </div>
+    <div class="yt-nav-item" id="navFavorites" onclick="switchTab('favorites')">
+      <span class="yt-nav-icon">❤️</span>Favorites
+    </div>
   </div>
 </div>
 
-<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN WITH PINCH TO ZOOM & FAIL-PROOF SAFE BACK -->
+<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN WITH ZOOM WRAPPER & FAVORITES -->
 <div class="yt-watch-screen" id="watchScreen">
   <div class="yt-watch-topbar">
     <button class="yt-back-btn" onclick="handleBackFromWatch()">← Back</button>
     <div style="font-weight:700;font-size:.9rem;" id="nowPlayingText">Now Playing</div>
     <div style="display:flex;gap:.6rem;align-items:center;">
+      <button class="yt-back-btn" id="watchLoveBtn" onclick="toggleCurrentLove()" title="Love Song" style="font-size:1.2rem;">♡</button>
       <button class="yt-back-btn" id="zoomToggleBtn" onclick="cycleZoomLevel()" title="Screen Zoom" style="font-size:.85rem;font-weight:700;background:#222;border-radius:12px;padding:3px 8px;">🔎 Fit 100%</button>
       <button class="yt-back-btn" onclick="toggleFullscreen()" title="Fullscreen" style="font-size:1.3rem;">⛶</button>
     </div>
   </div>
 
   <div class="yt-player-box" id="playerBox">
-    <div id="ytPlayerContainer"></div>
+    <div id="zoomWrapper" class="zoom-wrapper">
+      <div id="ytPlayerContainer"></div>
+    </div>
     <div class="touch-overlay-gesture" id="touchGestureOverlay"></div>
     <div class="music-album-overlay" id="musicAlbumOverlay">
       <div class="music-album-disc">
@@ -409,9 +450,18 @@ input, textarea, [contenteditable="true"] {
     </div>
 
     <div class="yt-actions-scroll">
-      <button class="yt-act-pill" id="zoomPillBtn" onclick="cycleZoomLevel()">🔎 Zoom: 100% Fit</button>
+      <button class="yt-act-pill love-pill-btn" id="watchLovePill" onclick="toggleCurrentLove()">❤️ Love Song</button>
+      
+      <!-- ZOOM PRESET CHIPS BAR -->
+      <div class="zoom-controls-group">
+        <span style="font-size:.75rem;color:#aaa;font-weight:700;margin-right:2px;">🔎 Zoom:</span>
+        <button class="zoom-btn-chip active" id="zChip100" onclick="setZoomLevel(1.0)">100%</button>
+        <button class="zoom-btn-chip" id="zChip125" onclick="setZoomLevel(1.25)">125%</button>
+        <button class="zoom-btn-chip" id="zChip150" onclick="setZoomLevel(1.50)">150%</button>
+        <button class="zoom-btn-chip" id="zChip200" onclick="setZoomLevel(2.00)">200%</button>
+      </div>
+
       <button class="yt-act-pill dl-accent" onclick="openDlModal()">⬇️ Download MP3 Song</button>
-      <button class="yt-act-pill">👍 Like</button>
       <button class="yt-act-pill">↗️ Share</button>
     </div>
   </div>
@@ -437,42 +487,132 @@ const API = 'https://aura-music-player-rj2v.onrender.com';
 let ytPlayer = null;
 let currentVideo = null;
 let backPressCount = 0;
-let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic'
+let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic', 'favorites'
 let searchAbortController = null;
 let seekTimer = null;
 
-// ── NATIVE 2-FINGER TOUCH PINCH TO ZOOM SYSTEM ──
-let pinchScale = 1.0;
+// ── FAVORITES / LOVED SONGS PLAYLIST SYSTEM ──
+let lovedSongs = [];
+
+function loadLovedSongs() {
+  try {
+    const data = localStorage.getItem('aura_favorites');
+    if (data) lovedSongs = JSON.parse(data);
+  } catch(e){ lovedSongs = []; }
+  updateLoveBadgeCount();
+}
+
+function saveLovedSongs() {
+  try {
+    localStorage.setItem('aura_favorites', JSON.stringify(lovedSongs));
+  } catch(e){}
+  updateLoveBadgeCount();
+}
+
+function updateLoveBadgeCount() {
+  const badge = document.getElementById('loveCountBadge');
+  if (badge) badge.textContent = lovedSongs.length;
+}
+
+function isSongLoved(id) {
+  return lovedSongs.some(s => s.id === id);
+}
+
+function toggleLoveSong(songObj, event) {
+  if (event) { event.preventDefault(); event.stopPropagation(); }
+  
+  const index = lovedSongs.findIndex(s => s.id === songObj.id);
+  if (index > -1) {
+    lovedSongs.splice(index, 1);
+    showToast('Removed from ❤️ Favorites');
+  } else {
+    lovedSongs.unshift({
+      id: songObj.id,
+      title: songObj.title,
+      artist: songObj.artist,
+      thumbnail: songObj.thumbnail || songObj.thumb,
+      duration: songObj.duration || 0,
+      mode: currentMode
+    });
+    showToast('Added to ❤️ Favorites Playlist!');
+  }
+  saveLovedSongs();
+
+  // Update UI heart icons
+  updateCurrentLoveUI();
+  if (currentMode === 'favorites') {
+    renderFavoritesFeed();
+  } else {
+    // Refresh card heart if in feed
+    const cardHeart = document.getElementById(`heart-${songObj.id}`);
+    if (cardHeart) {
+      if (isSongLoved(songObj.id)) cardHeart.classList.add('is-loved');
+      else cardHeart.classList.remove('is-loved');
+    }
+  }
+}
+
+function toggleCurrentLove() {
+  if (!currentVideo) return;
+  toggleLoveSong(currentVideo);
+}
+
+function updateCurrentLoveUI() {
+  if (!currentVideo) return;
+  const isLoved = isSongLoved(currentVideo.id);
+  const btn = document.getElementById('watchLoveBtn');
+  const pill = document.getElementById('watchLovePill');
+
+  if (btn) {
+    btn.textContent = isLoved ? '❤️' : '♡';
+  }
+  if (pill) {
+    if (isLoved) {
+      pill.textContent = '❤️ Loved Song';
+      pill.classList.add('is-loved');
+    } else {
+      pill.textContent = '♡ Add to Favorites';
+      pill.classList.remove('is-loved');
+    }
+  }
+}
+
+// ── GUARANTEED 100% WORKING ZOOM WRAPPER SYSTEM ──
+let zoomScale = 1.0;
 let initialPinchDist = 0;
 let initialScale = 1.0;
 let lastTapTime = 0;
 
-function applyZoom(scaleVal) {
-  pinchScale = Math.min(Math.max(scaleVal, 1.0), 3.5); // Clamp zoom between 1.0x and 3.5x
-  const iframe = document.querySelector('#ytPlayerContainer iframe');
-  if (iframe) {
-    const isLandscape = window.innerWidth > window.innerHeight;
-    if (isLandscape && document.body.classList.contains('has-open-player')) {
-      iframe.style.transform = `translate(-50%, -50%) scale(${1.35 * pinchScale})`;
-    } else {
-      iframe.style.transform = `scale(${pinchScale})`;
-    }
+function setZoomLevel(scaleVal) {
+  zoomScale = Math.min(Math.max(scaleVal, 1.0), 3.5);
+  const wrapper = document.getElementById('zoomWrapper');
+  if (wrapper) {
+    wrapper.style.transform = `scale(${zoomScale})`;
   }
 
-  const pct = Math.round(pinchScale * 100);
+  // Update button chips UI
+  document.querySelectorAll('.zoom-btn-chip').forEach(btn => btn.classList.remove('active'));
+  if (scaleVal === 1.0) document.getElementById('zChip100').classList.add('active');
+  else if (scaleVal === 1.25) document.getElementById('zChip125').classList.add('active');
+  else if (scaleVal === 1.50) document.getElementById('zChip150').classList.add('active');
+  else if (scaleVal === 2.00) document.getElementById('zChip200').classList.add('active');
+
+  const pct = Math.round(zoomScale * 100);
   document.getElementById('zoomToggleBtn').textContent = `🔎 ${pct}%`;
-  document.getElementById('zoomPillBtn').textContent = `🔎 Zoom: ${pct}%`;
+  showToast(`Screen Zoom: ${pct}%`);
 }
 
 function cycleZoomLevel() {
-  if (pinchScale < 1.15) applyZoom(1.4);
-  else if (pinchScale < 1.6) applyZoom(1.9);
-  else applyZoom(1.0);
-  showToast(`Video Zoom: ${Math.round(pinchScale * 100)}%`);
+  if (zoomScale < 1.15) setZoomLevel(1.25);
+  else if (zoomScale < 1.4) setZoomLevel(1.50);
+  else if (zoomScale < 1.8) setZoomLevel(2.00);
+  else setZoomLevel(1.0);
 }
 
 // SETUP PINCH GESTURE ON TOUCH OVERLAY GESTURE LAYER ABOVE IFRAME
 document.addEventListener('DOMContentLoaded', () => {
+  loadLovedSongs();
+
   const overlay = document.getElementById('touchGestureOverlay');
   
   overlay.addEventListener('touchstart', (e) => {
@@ -481,9 +621,8 @@ document.addEventListener('DOMContentLoaded', () => {
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
-      initialScale = pinchScale;
+      initialScale = zoomScale;
     } else if (e.touches.length === 1) {
-      // Handle Double Tap to Zoom / Single Tap to Play Pause
       const now = Date.now();
       if (now - lastTapTime < 300) {
         cycleZoomLevel();
@@ -501,7 +640,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.touches[0].clientY - e.touches[1].clientY
       );
       const factor = currentDist / initialPinchDist;
-      applyZoom(initialScale * factor);
+      setZoomLevel(initialScale * factor);
     }
   }, { passive: true });
 
@@ -723,12 +862,18 @@ function renderFeed(list) {
     else if (currentMode === 'applemusic') subtext = `Apple Music Audio MP3 · ${item.artist}`;
     else if (currentMode === 'ytmusic') subtext = `YouTube Music MP3 · ${item.artist}`;
 
+    const isLoved = isSongLoved(item.id);
+    const itemJson = JSON.stringify({id:item.id, title:item.title, artist:item.artist, thumbnail:item.thumbnail, duration:item.duration}).replace(/"/g, '&quot;');
+
     return `
     <div class="yt-card" onclick="openWatch('${item.id}','${escHtml(item.title)}','${escHtml(item.artist)}','${item.thumbnail}')">
       <div class="yt-thumb-wrap">
         <img src="${item.thumbnail}" loading="lazy"/>
         <div class="yt-dur">${fmtSec(item.duration)}</div>
         ${badgeHtml}
+        <button class="card-love-btn ${isLoved ? 'is-loved' : ''}" id="heart-${item.id}" onclick="toggleLoveSong(${itemJson}, event)">
+          ${isLoved ? '❤️' : '♡'}
+        </button>
       </div>
       <div class="yt-details">
         <div class="yt-avatar">${(item.artist||'S')[0].toUpperCase()}</div>
@@ -739,6 +884,44 @@ function renderFeed(list) {
       </div>
     </div>`;
   }).join('');
+}
+
+function renderFavoritesFeed() {
+  const feed = document.getElementById('videoFeed');
+  if (!lovedSongs || !lovedSongs.length) {
+    feed.innerHTML = `
+      <div style="text-align:center;padding:4rem 1rem;color:#aaa;">
+        <div style="font-size:3rem;margin-bottom:10px;">❤️</div>
+        <div style="font-size:1.1rem;font-weight:700;color:#fff;">No Loved Songs Yet</div>
+        <div style="font-size:.85rem;margin-top:6px;color:#888;">Tap the ❤️ heart icon on any video or song to save it to your Favorites playlist!</div>
+      </div>`;
+    return;
+  }
+
+  feed.innerHTML = `
+    <div style="padding:1rem 1rem .5rem;font-size:1.1rem;font-weight:700;display:flex;align-items:center;justify-content:space-between;">
+      <span>❤️ Loved Songs Playlist (${lovedSongs.length})</span>
+      <button style="background:none;border:none;color:#ff2d55;font-weight:700;font-size:.85rem;" onclick="lovedSongs=[];saveLovedSongs();renderFavoritesFeed();">Clear All</button>
+    </div>
+    ${lovedSongs.map(item => {
+      const itemJson = JSON.stringify({id:item.id, title:item.title, artist:item.artist, thumbnail:item.thumbnail, duration:item.duration}).replace(/"/g, '&quot;');
+      return `
+      <div class="yt-card" onclick="openWatch('${item.id}','${escHtml(item.title)}','${escHtml(item.artist)}','${item.thumbnail}')">
+        <div class="yt-thumb-wrap">
+          <img src="${item.thumbnail}" loading="lazy"/>
+          <div class="yt-dur">${fmtSec(item.duration)}</div>
+          <div class="spotify-badge" style="background:#ff2d55;color:#fff;">❤️ Loved Song</div>
+          <button class="card-love-btn is-loved" onclick="toggleLoveSong(${itemJson}, event)">❤️</button>
+        </div>
+        <div class="yt-details">
+          <div class="yt-avatar" style="background:#ff2d55;">❤️</div>
+          <div class="yt-meta">
+            <div class="yt-title">${item.title}</div>
+            <div class="yt-subtext">Favorites Playlist · ${item.artist}</div>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}`;
 }
 
 // ── PLAY PLAYER SCREEN & MINI PLAYER BAR ──
@@ -791,6 +974,8 @@ function openWatch(id, title, artist, thumb) {
   document.getElementById('wBadge').textContent = modeBadge;
   document.getElementById('nowPlayingText').textContent = `🎵 ${modeBadge}`;
 
+  updateCurrentLoveUI();
+
   // DISMISS KEYBOARD & SCROLL WATCH SCREEN TO TOP
   document.getElementById('searchInput').blur();
   if (document.activeElement) document.activeElement.blur();
@@ -802,7 +987,7 @@ function openWatch(id, title, artist, thumb) {
   document.body.classList.add('has-open-player');
 
   // RESET ZOOM SCALE TO FIT AT START
-  applyZoom(1.0);
+  setZoomLevel(1.0);
 
   // GRACEFULLY STOP PREVIOUS VIDEO BEFORE LOADING NEW ONE
   stopSeekTimer();
@@ -826,7 +1011,6 @@ function openWatch(id, title, artist, thumb) {
 function minimizePlayer() {
   document.activeElement && document.activeElement.blur();
 
-  // EXIT HARDWARE FULLSCREEN IF ACTIVE
   if (document.fullscreenElement || document.webkitFullscreenElement) {
     try {
       if (document.exitFullscreen) document.exitFullscreen();
@@ -834,7 +1018,6 @@ function minimizePlayer() {
     } catch(e){}
   }
 
-  // PAUSE VIDEO SO ANDROID GPU TEXTURE RENDERER NEVER FREEZES
   if (ytPlayer && ytPlayer.pauseVideo) {
     try { ytPlayer.pauseVideo(); } catch(e){}
   }
@@ -1013,6 +1196,16 @@ function switchTab(tab) {
     si.value = '';
     toggleClearBtn();
     feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">🍎 Search any song from Apple Music MP3 or tap a category above</div>`;
+  } else if (tab === 'favorites') {
+    currentMode = 'favorites';
+    logo.classList.add('favorites');
+    title.textContent = '❤️ Loved Playlist';
+    si.placeholder = 'Search inside your favorites...';
+    genreBar.style.display = 'none';
+    document.getElementById('navFavorites').classList.add('active');
+    si.value = '';
+    toggleClearBtn();
+    renderFavoritesFeed();
   }
 }
 
@@ -1061,7 +1254,6 @@ function checkAutoOrientation() {
     document.body.classList.add('has-open-player');
     nav.style.display = 'none';
 
-    // TRIGGER HTML5 HARDWARE NATIVE FULLSCREEN ON PLAYER BOX
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
       try {
         if (pBox.requestFullscreen) pBox.requestFullscreen().catch(e=>{});
