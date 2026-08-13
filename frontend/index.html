@@ -10,6 +10,7 @@
 :root{
   --bg:#0f0f0f;--surface:#212121;--border:#383838;
   --text:#f1f1f1;--muted:#aaa;--accent:#ff0000;
+  --ytmusic-accent:#ff0033;
   --pill-bg:rgba(255,255,255,.1);
   --safe-top: max(32px, env(safe-area-inset-top));
 }
@@ -25,9 +26,12 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
   display:flex;align-items:center;justify-content:space-between;
   background:var(--bg);border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;z-index:10;
 }
-.yt-logo{display:flex;align-items:center;gap:.4rem;font-weight:700;font-size:1.2rem;letter-spacing:-.5px;cursor:pointer;}
-.yt-logo-icon{width:30px;height:22px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;}
+.yt-logo{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:1.2rem;letter-spacing:-.5px;cursor:pointer;}
+.yt-logo-icon{width:30px;height:22px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all 0.3s;}
 .yt-logo-icon::after{content:'';border-style:solid;border-width:5px 0 5px 9px;border-color:transparent transparent transparent #fff;margin-left:2px;}
+.yt-logo.ytmusic .yt-logo-icon{background:var(--ytmusic-accent);border-radius:50%;width:26px;height:26px;}
+.yt-logo.ytmusic .yt-logo-icon::after{border-width:4px 0 4px 7px;}
+
 .yt-hdr-actions{display:flex;align-items:center;gap:1.2rem;}
 .yt-hdr-icon{font-size:1.2rem;cursor:pointer;color:var(--text);background:none;border:none;}
 
@@ -43,6 +47,17 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
 .yt-input-box input{flex:1;background:none;border:none;outline:none;color:#fff;font-size:.95rem;}
 .yt-clear-btn{color:var(--muted);font-size:1.1rem;cursor:pointer;display:none;padding:0 .2rem;}
 .yt-search-btn{background:#222;border:1px solid #303030;border-radius:20px;color:#fff;padding:.45rem 1rem;font-weight:500;cursor:pointer;flex-shrink:0;}
+
+/* ── MUSIC GENRE CHIPS BAR ── */
+.ytm-genre-bar{
+  display:none;gap:.5rem;overflow-x:auto;padding:.6rem 1rem;background:#141414;
+  border-bottom:1px solid rgba(255,255,255,.05);scrollbar-width:none;flex-shrink:0;
+}
+.ytm-genre-chip{
+  background:var(--pill-bg);border:1px solid rgba(255,255,255,.1);border-radius:16px;
+  color:#fff;padding:.35rem .8rem;font-size:.78rem;font-weight:500;white-space:nowrap;cursor:pointer;
+}
+.ytm-genre-chip:active{background:var(--ytmusic-accent);}
 
 /* ── FEED / SCROLL ── */
 .yt-feed{flex:1;overflow-y:auto;padding-bottom:70px;}
@@ -155,9 +170,9 @@ body.is-landscape .yt-nav { display: none !important; }
 <div class="app" id="appRoot">
   <!-- TOP HEADER -->
   <div class="yt-header">
-    <div class="yt-logo" onclick="switchTab('home')">
+    <div class="yt-logo" id="headerLogo" onclick="switchTab('home')">
       <div class="yt-logo-icon"></div>
-      YouTube
+      <span id="headerTitle">YouTube</span>
     </div>
     <div class="yt-hdr-actions">
       <button class="yt-hdr-icon" onclick="focusSearch()">🔍</button>
@@ -177,6 +192,15 @@ body.is-landscape .yt-nav { display: none !important; }
       <span class="yt-clear-btn" id="clearBtn" onclick="clearSearch()">✕</span>
     </div>
     <button class="yt-search-btn" onclick="doSearch()">Search</button>
+  </div>
+
+  <!-- YOUTUBE MUSIC GENRE BAR -->
+  <div class="ytm-genre-bar" id="ytmGenreBar">
+    <div class="ytm-genre-chip" onclick="searchGenre('Trending Songs 2026')">🔥 Trending</div>
+    <div class="ytm-genre-chip" onclick="searchGenre('Top Bollywood Music')">🎤 Bollywood Audio</div>
+    <div class="ytm-genre-chip" onclick="searchGenre('Romantic Love Songs')">❤️ Romantic</div>
+    <div class="ytm-genre-chip" onclick="searchGenre('Punjabi Hits Songs')">💃 Punjabi Beats</div>
+    <div class="ytm-genre-chip" onclick="searchGenre('LoFi Chill Beats')">🎧 Lo-Fi Beats</div>
   </div>
 
   <!-- VIDEO FEED -->
@@ -207,7 +231,7 @@ body.is-landscape .yt-nav { display: none !important; }
 <div class="yt-watch-screen" id="watchScreen">
   <div class="yt-watch-topbar">
     <button class="yt-back-btn" onclick="handleBackFromWatch()">← Back</button>
-    <div style="font-weight:700;font-size:.9rem;">Now Playing</div>
+    <div style="font-weight:700;font-size:.9rem;" id="nowPlayingText">Now Playing</div>
     <div style="display:flex;gap:.6rem;align-items:center;">
       <button class="yt-back-btn" onclick="toggleFullscreen()" title="Fullscreen" style="font-size:1.3rem;">⛶</button>
     </div>
@@ -226,7 +250,7 @@ body.is-landscape .yt-nav { display: none !important; }
         <div class="yt-avatar" id="wAvatar">Y</div>
         <div>
           <div style="font-weight:600;font-size:.9rem;" id="wChannel">Channel Name</div>
-          <div style="font-size:.75rem;color:#aaa;">YouTube</div>
+          <div style="font-size:.75rem;color:#aaa;" id="wBadge">YouTube</div>
         </div>
       </div>
       <button class="yt-sub-btn">Subscribe</button>
@@ -262,6 +286,7 @@ let ytPlayer = null;
 let currentVideo = null;
 let isBgPlaying = false;
 let backPressCount = 0;
+let currentMode = 'youtube'; // 'youtube' or 'ytmusic'
 
 // ── YOUTUBE PLAYER INIT ──
 function onYouTubeIframeAPIReady() {
@@ -293,34 +318,39 @@ function clearSearch() {
   const input = document.getElementById('searchInput');
   input.value = '';
   document.getElementById('clearBtn').style.display = 'none';
-  input.blur(); // dismiss keyboard cleanly
+  input.blur();
 }
 
-// KEY: dismiss keyboard on Enter so user can go back/interact
 function handleSearchKey(e) {
   if (e.key === 'Enter') {
-    e.target.blur(); // hide keyboard first
+    e.target.blur();
     doSearch();
   }
 }
 
-// Called when search input loses focus - ensure no UI is stuck
-function dismissKeyboard() {
-  // Nothing extra needed; blur is the fix
+function dismissKeyboard() {}
+
+function searchGenre(genreQuery) {
+  const si = document.getElementById('searchInput');
+  si.value = genreQuery;
+  toggleClearBtn();
+  doSearch();
 }
 
 async function doSearch() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) return;
 
-  // Blur the input so keyboard hides and back button works again
   document.getElementById('searchInput').blur();
 
   const feed = document.getElementById('videoFeed');
-  feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">🔍 Searching YouTube...</div>`;
+  const endpoint = currentMode === 'ytmusic' ? `${API}/api/search/ytmusic` : `${API}/api/search/youtube`;
+  const label = currentMode === 'ytmusic' ? '🎵 Searching YouTube Music...' : '🔍 Searching YouTube...';
+
+  feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">${label}</div>`;
 
   try {
-    const r = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
+    const r = await fetch(`${endpoint}?q=${encodeURIComponent(q)}`);
     const data = await r.json();
     renderFeed(data.results || []);
   } catch(e) {
@@ -331,7 +361,7 @@ async function doSearch() {
 function renderFeed(list) {
   const feed = document.getElementById('videoFeed');
   if (!list.length) {
-    feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">No videos found</div>`;
+    feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">No results found</div>`;
     return;
   }
   feed.innerHTML = list.map(item => `
@@ -344,7 +374,7 @@ function renderFeed(list) {
         <div class="yt-avatar">${(item.artist||'Y')[0].toUpperCase()}</div>
         <div class="yt-meta">
           <div class="yt-title">${item.title}</div>
-          <div class="yt-subtext">${item.artist||'YouTube'} · ${fmtSec(item.duration)}</div>
+          <div class="yt-subtext">${item.artist||(currentMode === 'ytmusic' ? 'YouTube Music' : 'YouTube')} · ${fmtSec(item.duration)}</div>
         </div>
       </div>
     </div>`).join('');
@@ -356,8 +386,9 @@ function openWatch(id, title, artist, thumb) {
   document.getElementById('wTitle').textContent = title;
   document.getElementById('wChannel').textContent = artist;
   document.getElementById('wAvatar').textContent = (artist||'Y')[0].toUpperCase();
+  document.getElementById('wBadge').textContent = currentMode === 'ytmusic' ? 'YouTube Music' : 'YouTube';
+  document.getElementById('nowPlayingText').textContent = currentMode === 'ytmusic' ? '🎵 YouTube Music' : 'Now Playing';
 
-  // Dismiss keyboard before opening player
   document.getElementById('searchInput').blur();
 
   const ws = document.getElementById('watchScreen');
@@ -365,13 +396,12 @@ function openWatch(id, title, artist, thumb) {
 
   if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById(id);
 
-  // Setup background audio for MediaSession / background play
   const bgAudio = document.getElementById('bgAudio');
   bgAudio.src = `${API}/api/download?videoId=${encodeURIComponent(id)}&format=mp3`;
 
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
-      title, artist: artist||'YouTube',
+      title, artist: artist||'YouTube Music',
       artwork: [{ src: thumb, sizes: '512x512', type: 'image/jpeg' }]
     });
     navigator.mediaSession.setActionHandler('play', () => bgAudio.play());
@@ -381,22 +411,16 @@ function openWatch(id, title, artist, thumb) {
   checkAutoOrientation();
 }
 
-// KEY FIX: Back from watch - if keyboard open, dismiss it first; then exit FS; then close player
 function handleBackFromWatch() {
   const ws = document.getElementById('watchScreen');
-
-  // 1. If keyboard might be open, dismiss it first
   document.getElementById('searchInput').blur();
   document.activeElement && document.activeElement.blur();
 
-  // 2. Exit fullscreen if active
   if (ws.classList.contains('is-fullscreen')) {
     ws.classList.remove('is-fullscreen');
     document.getElementById('mainNav').style.display = 'flex';
     return;
   }
-
-  // 3. Close watch screen
   closeWatch();
 }
 
@@ -460,12 +484,10 @@ function triggerDownload(format) {
 
   const dlUrl = `${API}/api/download?videoId=${encodeURIComponent(currentVideo.id)}&title=${encodeURIComponent(currentVideo.title)}&format=${format}`;
 
-  // Try Capacitor Browser first, then fallback
   try {
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
       window.Capacitor.Plugins.Browser.open({ url: dlUrl });
     } else {
-      // Create an anchor and click it — forces Android download manager
       const a = document.createElement('a');
       a.href = dlUrl;
       a.download = `${currentVideo.title}.${format}`;
@@ -488,20 +510,44 @@ function showToast(msg, ms = 2500) {
   t._tid = setTimeout(() => { t.style.display = 'none'; }, ms);
 }
 
-// ── TAB SWITCHING ──
+// ── TAB SWITCHING (YOUTUBE MUSIC INTEGRATION) ──
 function switchTab(tab) {
   document.querySelectorAll('.yt-nav-item').forEach(el => el.classList.remove('active'));
   const feed = document.getElementById('videoFeed');
   const si = document.getElementById('searchInput');
+  const logo = document.getElementById('headerLogo');
+  const title = document.getElementById('headerTitle');
+  const genreBar = document.getElementById('ytmGenreBar');
 
   if (tab === 'home') {
+    currentMode = 'youtube';
+    logo.classList.remove('ytmusic');
+    title.textContent = 'YouTube';
+    si.placeholder = 'Search YouTube...';
+    genreBar.style.display = 'none';
     document.getElementById('navHome').classList.add('active');
     si.value = '';
     toggleClearBtn();
     feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">Type any song or video name to search</div>`;
+  } else if (tab === 'music') {
+    // 🎵 YOUTUBE MUSIC MODE
+    currentMode = 'ytmusic';
+    logo.classList.add('ytmusic');
+    title.textContent = 'YouTube Music';
+    si.placeholder = 'Search YouTube Music songs...';
+    genreBar.style.display = 'flex';
+    document.getElementById('navMusic').classList.add('active');
+    si.value = 'trending hindi music songs 2026';
+    toggleClearBtn();
+    doSearch();
   } else {
-    const queries = { music:'trending hindi songs music 2026', subs:'latest bollywood music videos', you:'top hits songs 2026 playlist' };
-    const ids = { music:'navMusic', subs:'navSubs', you:'navYou' };
+    currentMode = 'youtube';
+    logo.classList.remove('ytmusic');
+    title.textContent = 'YouTube';
+    si.placeholder = 'Search YouTube...';
+    genreBar.style.display = 'none';
+    const queries = { subs:'latest release music videos', you:'top hits songs 2026 playlist' };
+    const ids = { subs:'navSubs', you:'navYou' };
     document.getElementById(ids[tab]).classList.add('active');
     si.value = queries[tab] || '';
     toggleClearBtn();
@@ -514,7 +560,6 @@ function handleHardwareBack() {
   const dlModal = document.getElementById('dlModal');
   const ws = document.getElementById('watchScreen');
 
-  // Dismiss keyboard if open
   document.activeElement && document.activeElement.blur();
 
   if (dlModal.style.display === 'flex') { closeDlModal(); return true; }
