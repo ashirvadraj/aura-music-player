@@ -48,12 +48,12 @@ input, textarea, [contenteditable="true"] {
 }
 .yt-logo{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:1.2rem;letter-spacing:-.5px;cursor:pointer;}
 .yt-logo-icon{
-  width:32px;height:32px;border-radius:50%;
-  background:url('./app_logo.png') center/cover no-repeat !important;
-  border:1.5px solid #fff;box-shadow:0 0 10px rgba(255,255,255,.5);
-  display:inline-block;flex-shrink:0;transition:all 0.3s;
+  width:32px;height:22px;border-radius:6px;
+  background:#ff0000;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:.78rem;font-weight:900;box-shadow:0 2px 8px rgba(255,0,0,.4);
+  flex-shrink:0;transition:all 0.3s;
 }
-.yt-logo-icon::after{content:none !important;display:none !important;}
+.yt-logo-icon::after{content:'▶';display:block;margin-left:2px;}
 
 .yt-hdr-actions{display:flex;align-items:center;gap:1.2rem;}
 .yt-hdr-icon{font-size:1.2rem;cursor:pointer;color:var(--text);background:none;border:none;display:flex;align-items:center;gap:4px;}
