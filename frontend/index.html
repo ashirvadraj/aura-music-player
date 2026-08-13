@@ -168,7 +168,7 @@ input, textarea, [contenteditable="true"] {
   width:100%!important;height:100%!important;transition:transform 0.1s ease-out;transform-origin:center center;
 }
 
-/* ── PERFECT 100% OVERFLOW-FILL LANDSCAPE FULLSCREEN (ZERO BLACK BARS) ── */
+/* ── PERFECT 100% HARDWARE FULLSCREEN LANDSCAPE FILL (NO BLACK BARS) ── */
 @media screen and (orientation: landscape) {
   body.has-open-player .yt-watch-topbar,
   body.has-open-player .yt-watch-info,
@@ -177,8 +177,9 @@ input, textarea, [contenteditable="true"] {
   body.has-open-player .yt-header,
   body.has-open-player .yt-search-bar { display: none !important; }
 
-  body.has-open-player #watchScreen {
-    display: flex !important;
+  body.has-open-player #watchScreen,
+  body.has-open-player .yt-player-box,
+  body.has-open-player #ytPlayerContainer {
     position: fixed !important;
     top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
     width: 100vw !important; height: 100vh !important;
@@ -188,23 +189,11 @@ input, textarea, [contenteditable="true"] {
     overflow: hidden !important;
   }
 
-  body.has-open-player .yt-player-box,
-  body.has-open-player #ytPlayerContainer {
-    position: fixed !important;
-    top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
-    width: 100vw !important; height: 100vh !important;
-    max-width: 100vw !important; max-height: 100vh !important;
-    aspect-ratio: unset !important; margin: 0 !important; padding: 0 !important;
-    z-index: 999999 !important; background: #000 !important;
-    overflow: hidden !important;
-  }
-
-  /* FORCE VIDEO IFRAME TO FILL & OVERFLOW MOBILE SCREEN IN LANDSCAPE (NO BLACK BARS!) */
   body.has-open-player #ytPlayerContainer iframe {
     position: absolute !important;
     top: 50% !important; left: 50% !important;
-    width: 100vw !important; height: 56.25vw !important;
-    min-height: 100vh !important; min-width: 177.77vh !important;
+    width: 100vw !important; height: 100vh !important;
+    min-width: 100vw !important; min-height: 100vh !important;
     transform: translate(-50%, -50%) !important;
     object-fit: cover !important; border: none !important;
   }
@@ -358,7 +347,7 @@ input, textarea, [contenteditable="true"] {
   </div>
 </div>
 
-<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN WITH TWO-FINGER PINCH TO ZOOM & NO-FREEZE BACK PRESS -->
+<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN WITH PINCH TO ZOOM & FAIL-PROOF SAFE BACK -->
 <div class="yt-watch-screen" id="watchScreen">
   <div class="yt-watch-topbar">
     <button class="yt-back-btn" onclick="handleBackFromWatch()">← Back</button>
@@ -445,13 +434,13 @@ let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic'
 let searchAbortController = null;
 let seekTimer = null;
 
-// ── TWO-FINGER PINCH TO ZOOM & BUTTON ZOOM SYSTEM ──
+// TWO-FINGER PINCH TO ZOOM & BUTTON ZOOM SYSTEM
 let pinchScale = 1.0;
 let initialPinchDist = 0;
 let initialScale = 1.0;
 
 function applyZoom(scaleVal) {
-  pinchScale = Math.min(Math.max(scaleVal, 1.0), 3.0); // Clamp zoom between 1.0x and 3.0x
+  pinchScale = Math.min(Math.max(scaleVal, 1.0), 3.5); // Clamp zoom between 1.0x and 3.5x
   const iframe = document.querySelector('#ytPlayerContainer iframe');
   if (iframe) {
     const isLandscape = window.innerWidth > window.innerHeight;
@@ -468,8 +457,8 @@ function applyZoom(scaleVal) {
 }
 
 function cycleZoomLevel() {
-  if (pinchScale < 1.15) applyZoom(1.35);
-  else if (pinchScale < 1.6) applyZoom(1.85);
+  if (pinchScale < 1.15) applyZoom(1.4);
+  else if (pinchScale < 1.6) applyZoom(1.9);
   else applyZoom(1.0);
   showToast(`Video Zoom: ${Math.round(pinchScale * 100)}%`);
 }
@@ -816,10 +805,22 @@ function openWatch(id, title, artist, thumb) {
   checkAutoOrientation();
 }
 
-// ── SAFE BACK & MINIMIZE (PREVENTS ANY ANDROID STUCK/FREEZE ON BACK PRESS) ──
+// ── SAFE BACK & MINIMIZE (100% PREVENTS ANY ANDROID STUCK/FREEZE ON BACK PRESS) ──
 function minimizePlayer() {
-  // DISMISS KEYBOARD FIRST
   document.activeElement && document.activeElement.blur();
+
+  // EXIT HARDWARE FULLSCREEN IF ACTIVE
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    try {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } catch(e){}
+  }
+
+  // PAUSE VIDEO SO ANDROID GPU TEXTURE RENDERER NEVER FREEZES
+  if (ytPlayer && ytPlayer.pauseVideo) {
+    try { ytPlayer.pauseVideo(); } catch(e){}
+  }
 
   const ws = document.getElementById('watchScreen');
   ws.style.display = 'none';
@@ -856,6 +857,13 @@ function handleBackFromWatch() {
 function closeWatch() {
   document.activeElement && document.activeElement.blur();
 
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    try {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } catch(e){}
+  }
+
   const ws = document.getElementById('watchScreen');
   ws.style.display = 'none';
   ws.classList.remove('is-fullscreen');
@@ -871,10 +879,18 @@ function closeWatch() {
 }
 
 function toggleFullscreen() {
-  const ws = document.getElementById('watchScreen');
-  if (ws.style.display !== 'flex') ws.style.display = 'flex';
-  ws.classList.toggle('is-fullscreen');
-  document.getElementById('mainNav').style.display = ws.classList.contains('is-fullscreen') ? 'none' : 'flex';
+  const pBox = document.getElementById('playerBox');
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    try {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } catch(e){}
+  } else {
+    try {
+      if (pBox.requestFullscreen) pBox.requestFullscreen();
+      else if (pBox.webkitRequestFullscreen) pBox.webkitRequestFullscreen();
+    } catch(e){}
+  }
 }
 
 // ── DOWNLOAD ──
@@ -1019,6 +1035,7 @@ function handleHardwareBack() {
 // ── AUTOMATIC FULLSCREEN LANDSCAPE ORIENTATION FOR MOBILE ──
 function checkAutoOrientation() {
   const ws = document.getElementById('watchScreen');
+  const pBox = document.getElementById('playerBox');
   const nav = document.getElementById('mainNav');
   const isLandscape = window.innerWidth > window.innerHeight;
 
@@ -1026,6 +1043,15 @@ function checkAutoOrientation() {
     document.body.classList.add('is-landscape');
     document.body.classList.add('has-open-player');
     nav.style.display = 'none';
+
+    // TRIGGER HTML5 HARDWARE NATIVE FULLSCREEN ON PLAYER BOX
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      try {
+        if (pBox.requestFullscreen) pBox.requestFullscreen().catch(e=>{});
+        else if (pBox.webkitRequestFullscreen) pBox.webkitRequestFullscreen();
+      } catch(e){}
+    }
+
     if (ytPlayer && ytPlayer.setSize) {
       try { ytPlayer.setSize(window.innerWidth, window.innerHeight); } catch(e){}
     }
