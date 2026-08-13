@@ -125,11 +125,11 @@ app.get('/api/search/ytmusic', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// ROUTE 1C: SPOTIFY SEARCH (AUDIO MP3 ONLY)
+// ROUTE 1C: SPOTIFY SEARCH (PURE MP3 AUDIO)
 // ─────────────────────────────────────────────
 app.get('/api/search/spotify', async (req, res) => {
   const { q } = req.query;
-  const searchQuery = q ? `${q} spotify audio` : 'top spotify songs audio 2026';
+  const searchQuery = q ? `${q} spotify song` : 'spotify top songs 2026';
 
   try {
     const searchRes = await ytsr(searchQuery, { limit: 20 });
@@ -137,7 +137,7 @@ app.get('/api/search/spotify', async (req, res) => {
 
     const results = items.map(item => ({
       id: item.id,
-      title: item.title ? item.title.replace(/official audio|lyric video/gi, '').trim() : 'Spotify Track',
+      title: item.title ? item.title.replace(/official audio|lyric video|official video/gi, '').trim() : 'Spotify Track',
       artist: item.author ? item.author.name : 'Spotify Artist',
       duration: 0,
       thumbnail: item.bestThumbnail ? item.bestThumbnail.url : `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
@@ -153,11 +153,11 @@ app.get('/api/search/spotify', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// ROUTE 1D: APPLE MUSIC SEARCH (AUDIO MP3 ONLY)
+// ROUTE 1D: APPLE MUSIC SEARCH (PURE MP3 AUDIO)
 // ─────────────────────────────────────────────
 app.get('/api/search/applemusic', async (req, res) => {
   const { q } = req.query;
-  const searchQuery = q ? `${q} apple music audio` : 'top apple music charts 2026';
+  const searchQuery = q ? `${q} apple music song` : 'apple music top hits 2026';
 
   try {
     const searchRes = await ytsr(searchQuery, { limit: 20 });
@@ -165,7 +165,7 @@ app.get('/api/search/applemusic', async (req, res) => {
 
     const results = items.map(item => ({
       id: item.id,
-      title: item.title ? item.title.replace(/official audio|lyric video/gi, '').trim() : 'Apple Music Track',
+      title: item.title ? item.title.replace(/official audio|lyric video|official video/gi, '').trim() : 'Apple Music Track',
       artist: item.author ? item.author.name : 'Apple Music Artist',
       duration: 0,
       thumbnail: item.bestThumbnail ? item.bestThumbnail.url : `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
@@ -181,20 +181,20 @@ app.get('/api/search/applemusic', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// ROUTE 2: DOWNLOAD (MP3 / MP4 Instant Pipe Stream)
+// ROUTE 2: DOWNLOAD & MP3 STREAMING (FAIL-PROOF)
 // ─────────────────────────────────────────────
 app.get('/api/download', (req, res) => {
   const { videoId, q, format, title } = req.query;
-  if (!videoId && !q) return res.status(400).json({ error: 'Missing videoId or q' });
+  if (!videoId && !q) return res.status(400).send('Missing parameters');
 
   const isMp4 = (format === 'mp4');
   const ext = isMp4 ? 'mp4' : 'mp3';
   const mime = isMp4 ? 'video/mp4' : 'audio/mpeg';
-  const sanitizeTitle = (title || videoId || 'song_track').replace(/[/\\?%*:|"<>]/g, '_');
+  const sanitizeTitle = (title || videoId || 'song_audio').replace(/[/\\?%*:|"<>]/g, '_');
   const fileName = `${sanitizeTitle}.${ext}`;
 
   const target = videoId ? `https://www.youtube.com/watch?v=${videoId}` : `ytsearch1:${q}`;
-  const formatArg = isMp4 ? 'best[ext=mp4]/best' : 'ba/bestaudio/best';
+  const formatArg = isMp4 ? 'b[ext=mp4]/b/best' : 'ba/b/best';
 
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
@@ -205,7 +205,7 @@ app.get('/api/download', (req, res) => {
   const ytdlpArgs = [
     ...YTDLP_ARGS_PREFIX,
     target,
-    '--extractor-args', 'youtube:player_client=android,web',
+    '--no-check-certificates',
     '-f', formatArg,
     '-o', '-',
     '--no-playlist',
@@ -214,15 +214,16 @@ app.get('/api/download', (req, res) => {
   ];
 
   const proc = spawn(YTDLP, ytdlpArgs);
+
   proc.stdout.pipe(res);
 
   req.on('close', () => {
-    proc.kill();
+    try { proc.kill(); } catch(e){}
   });
 
   proc.on('error', (err) => {
     console.error(`[Download Error]:`, err);
-    if (!res.headersSent) res.status(500).json({ error: 'Download failed' });
+    if (!res.headersSent) res.status(500).send('Download stream temporary error');
   });
 });
 
