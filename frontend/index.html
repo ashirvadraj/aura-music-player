@@ -65,7 +65,7 @@ input, textarea, [contenteditable="true"] {
 /* ── SEARCH BAR & LIVE AUTO-SUGGESTIONS ── */
 .yt-search-bar{
   padding:.6rem 1rem;background:var(--bg);border-bottom:1px solid var(--border);
-  display:flex;gap:.5rem;align-items:center;flex-shrink:0;z-index:100;position:relative;
+  display:flex;gap:.5rem;align-items:center;flex-shrink:0;z-index:1000;position:relative;
 }
 .yt-input-box{
   flex:1;background:#121212;border:1px solid #303030;border-radius:20px;
@@ -86,13 +86,13 @@ input, textarea, [contenteditable="true"] {
 /* AUTO-SUGGESTIONS DROPDOWN CONTAINER */
 .search-suggestions-box {
   position: absolute; top: 100%; left: 1rem; right: 1rem;
-  background: #1c1c1e; border: 1px solid #333; border-radius: 0 0 16px 16px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.8); z-index: 1000; display: none;
-  max-height: 240px; overflow-y: auto;
+  background: #1c1c1e; border: 1px solid #444; border-radius: 0 0 16px 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.95); z-index: 9999; display: none;
+  max-height: 260px; overflow-y: auto;
 }
 .suggestion-item {
-  padding: .65rem 1rem; font-size: .9rem; color: #ddd; border-bottom: 1px solid rgba(255,255,255,.05);
-  display: flex; align-items: center; gap: .6rem; cursor: pointer;
+  padding: .75rem 1rem; font-size: .92rem; color: #eee; border-bottom: 1px solid rgba(255,255,255,.08);
+  display: flex; align-items: center; gap: .7rem; cursor: pointer; font-weight: 500;
 }
 .suggestion-item:active { background: #333; color: #fff; }
 
@@ -221,17 +221,17 @@ input, textarea, [contenteditable="true"] {
   width:100%!important;height:100%!important;border:none!important;
 }
 
-/* NON-BLOCKING FLOATING LANDSCAPE/PORTRAIT ZOOM CHIP */
+/* NON-BLOCKING FLOATING TOP-LEFT ZOOM CHIP (POSITIONED ON TOP-LEFT SO TOP-RIGHT CC & SETTING GEAR ICON ARE 100% UNCOVERED) */
 .player-zoom-chip-bar {
-  position: absolute; top: max(10px, env(safe-area-inset-top)); right: 12px;
-  z-index: 9999; display: flex; align-items: center; gap: .5rem;
+  position: absolute; top: max(8px, env(safe-area-inset-top)); left: 10px;
+  z-index: 999; display: flex; align-items: center; gap: .5rem;
   pointer-events: none;
 }
 .player-zoom-chip {
   pointer-events: auto !important;
   background: rgba(0,0,0,.75); backdrop-filter: blur(8px);
   border: 1px solid rgba(255,255,255,.25); border-radius: 16px;
-  color: #fff; padding: .35rem .75rem; font-size: .78rem; font-weight: 700;
+  color: #fff; padding: .3rem .7rem; font-size: .75rem; font-weight: 700;
   cursor: pointer; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.6);
 }
 .player-zoom-chip:active { background: #ff0000; }
@@ -472,7 +472,7 @@ body.audio-mode .music-controls-panel { display: flex !important; }
       <div id="ytPlayerContainer"></div>
     </div>
 
-    <!-- NON-BLOCKING FLOATING LANDSCAPE/PORTRAIT ZOOM CHIP -->
+    <!-- NON-BLOCKING FLOATING TOP-LEFT ZOOM CHIP (POSITIONED ON TOP-LEFT SO TOP-RIGHT CC & SETTING GEAR ICON ARE 100% UNCOVERED) -->
     <div class="player-zoom-chip-bar">
       <button class="player-zoom-chip" onclick="cycleZoomLevel(event)">🔎 Zoom: <span id="playerZoomLabel">100%</span></button>
     </div>
@@ -557,7 +557,13 @@ let audioCtx = null;
 // CLIENT SIDE SEARCH CACHE (INSTANT 0ms RESPONSES)
 const clientSearchCache = new Map();
 
-// ── LIVE SEARCH AUTO-SUGGESTIONS SYSTEM ──
+// ── LIVE SEARCH AUTO-SUGGESTIONS SYSTEM (CLIENT + BACKEND FALLBACK) ──
+window.handleSuggestionsCallback = function(data) {
+  if (data && data[1] && data[1].length > 0) {
+    renderSuggestionsList(data[1]);
+  }
+};
+
 function handleSearchInput() {
   toggleClearBtn();
   const q = document.getElementById('searchInput').value.trim();
@@ -569,24 +575,40 @@ function handleSearchInput() {
   }
 
   clearTimeout(suggestDebounceTimer);
-  suggestDebounceTimer = setTimeout(async () => {
-    try {
-      const r = await fetch(`${API}/api/suggestions?q=${encodeURIComponent(q)}`);
-      const d = await r.json();
-      if (d.suggestions && d.suggestions.length > 0) {
-        box.innerHTML = d.suggestions.slice(0, 7).map(item => `
-          <div class="suggestion-item" onclick="selectSuggestion('${escHtml(item)}')">
-            <span>🔍</span> ${item}
-          </div>
-        `).join('');
-        box.style.display = 'block';
-      } else {
-        box.style.display = 'none';
-      }
-    } catch(e) {
-      box.style.display = 'none';
-    }
-  }, 150);
+  suggestDebounceTimer = setTimeout(() => {
+    // Try JSONP client call first
+    const oldScript = document.getElementById('jsonpSuggest');
+    if (oldScript) oldScript.remove();
+
+    const script = document.createElement('script');
+    script.id = 'jsonpSuggest';
+    script.src = `https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(q)}&jsonp=handleSuggestionsCallback`;
+    document.body.appendChild(script);
+
+    // Fallback to backend API
+    fetch(`${API}/api/suggestions?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.suggestions && d.suggestions.length > 0) {
+          renderSuggestionsList(d.suggestions);
+        }
+      }).catch(e => {});
+  }, 100);
+}
+
+function renderSuggestionsList(list) {
+  const box = document.getElementById('suggestionsBox');
+  if (!box || !list || !list.length) return;
+  
+  box.innerHTML = list.slice(0, 8).map(item => {
+    const cleanItem = Array.isArray(item) ? item[0] : item;
+    return `
+      <div class="suggestion-item" onclick="selectSuggestion('${escHtml(cleanItem)}')">
+        <span>🔍</span> ${cleanItem}
+      </div>
+    `;
+  }).join('');
+  box.style.display = 'block';
 }
 
 function selectSuggestion(queryStr) {
@@ -830,7 +852,7 @@ function updateCurrentLoveUI() {
   }
 }
 
-// ── SCREEN ZOOM SYSTEM FOR YOUTUBE PLAYER (WORKS IN PORTRAIT & LANDSCAPE) ──
+// ── SCREEN ZOOM SYSTEM FOR YOUTUBE PLAYER (TOP-LEFT CHIP, 100% UNCOVERED CC & GEAR ICON) ──
 function applyZoom(scaleVal) {
   zoomScale = Math.min(Math.max(scaleVal, 1.0), 3.0);
   const wrapper = document.getElementById('zoomWrapper');
@@ -1237,6 +1259,7 @@ function openWatch(id, title, artist, thumb) {
   // DISMISS KEYBOARD & SCROLL WATCH SCREEN TO TOP
   document.getElementById('searchInput').blur();
   if (document.activeElement) document.activeElement.blur();
+  hideSuggestions();
 
   const ws = document.getElementById('watchScreen');
   ws.scrollTop = 0;
