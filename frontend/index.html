@@ -127,7 +127,7 @@ input, textarea, [contenteditable="true"] {
 .mini-player-controls{display:flex;align-items:center;gap:.6rem;}
 .mini-btn{background:none;border:none;color:#fff;font-size:1.4rem;cursor:pointer;padding:2px 6px;}
 
-/* ── BOTTOM NAV BAR (HOME, YT MUSIC, SPOTIFY, APPLE MUSIC) ── */
+/* ── BOTTOM NAV BAR ── */
 .yt-nav{
   position:fixed;bottom:0;left:0;right:0;height:56px;
   background:#0f0f0f;border-top:1px solid rgba(255,255,255,.1);
@@ -139,8 +139,6 @@ input, textarea, [contenteditable="true"] {
 }
 .yt-nav-item.active{color:#fff;font-weight:700;}
 .yt-nav-icon{font-size:1.3rem;}
-
-body.is-landscape .yt-nav, body.is-landscape .mini-player-bar { display: none !important; }
 
 /* ── GUARANTEED WORKING UNIFIED PLAYER SCREEN ── */
 .yt-watch-screen{
@@ -165,7 +163,40 @@ body.is-landscape .yt-nav, body.is-landscape .mini-player-bar { display: none !i
   position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;
   z-index:99999!important;aspect-ratio:unset!important;margin:0!important;padding:0!important;
 }
-#ytPlayerContainer{width:100%;height:100%;border:none;}
+#ytPlayerContainer{width:100%;height:100%;border:none;overflow:hidden;}
+#ytPlayerContainer iframe{
+  width:100%!important;height:100%!important;transition:transform 0.3s ease;transform-origin:center center;
+}
+
+/* ── AUTOMATIC FULLSCREEN LANDSCAPE ORIENTATION FOR MOBILE ── */
+@media screen and (orientation: landscape) {
+  body.has-open-player .yt-watch-topbar,
+  body.has-open-player .yt-watch-info,
+  body.has-open-player .yt-nav,
+  body.has-open-player .mini-player-bar,
+  body.has-open-player .yt-header,
+  body.has-open-player .yt-search-bar { display: none !important; }
+
+  body.has-open-player #watchScreen {
+    display: flex !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 999999 !important;
+    background: #000 !important;
+    overflow: hidden !important;
+  }
+
+  body.has-open-player .yt-player-box {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    aspect-ratio: unset !important;
+    z-index: 999999 !important;
+  }
+}
 
 /* SPOTIFY / APPLE MUSIC ALBUM ART OVERLAY OVER PLAYER BOX */
 .music-album-overlay{
@@ -315,12 +346,13 @@ body.is-landscape .yt-nav, body.is-landscape .mini-player-bar { display: none !i
   </div>
 </div>
 
-<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN -->
+<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN WITH ZOOM & FULLSCREEN ROTATION -->
 <div class="yt-watch-screen" id="watchScreen">
   <div class="yt-watch-topbar">
     <button class="yt-back-btn" onclick="minimizePlayer()">↓ Minimize</button>
     <div style="font-weight:700;font-size:.9rem;" id="nowPlayingText">Now Playing</div>
     <div style="display:flex;gap:.6rem;align-items:center;">
+      <button class="yt-back-btn" id="zoomToggleBtn" onclick="cycleZoomLevel()" title="Screen Zoom" style="font-size:.85rem;font-weight:700;background:#222;border-radius:12px;padding:3px 8px;">🔎 Fit 100%</button>
       <button class="yt-back-btn" onclick="toggleFullscreen()" title="Fullscreen" style="font-size:1.3rem;">⛶</button>
     </div>
   </div>
@@ -369,6 +401,7 @@ body.is-landscape .yt-nav, body.is-landscape .mini-player-bar { display: none !i
     </div>
 
     <div class="yt-actions-scroll">
+      <button class="yt-act-pill" id="zoomPillBtn" onclick="cycleZoomLevel()">🔎 Zoom: 100% Fit</button>
       <button class="yt-act-pill dl-accent" onclick="openDlModal()">⬇️ Download MP3 Song</button>
       <button class="yt-act-pill">👍 Like</button>
       <button class="yt-act-pill">↗️ Share</button>
@@ -399,6 +432,28 @@ let backPressCount = 0;
 let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic'
 let searchAbortController = null;
 let seekTimer = null;
+
+// ZOOM LEVEL SYSTEM (1.0 = Fit 100%, 1.25 = Fill 125%, 1.50 = Zoom 150%)
+let currentZoomIndex = 0;
+const ZOOM_LEVELS = [
+  { scale: 1.0, label: 'Fit 100%' },
+  { scale: 1.25, label: 'Fill 125%' },
+  { scale: 1.50, label: 'Zoom 150%' }
+];
+
+function cycleZoomLevel() {
+  currentZoomIndex = (currentZoomIndex + 1) % ZOOM_LEVELS.length;
+  const zoom = ZOOM_LEVELS[currentZoomIndex];
+
+  const iframe = document.querySelector('#ytPlayerContainer iframe');
+  if (iframe) {
+    iframe.style.transform = `scale(${zoom.scale})`;
+  }
+
+  document.getElementById('zoomToggleBtn').textContent = `🔎 ${zoom.label}`;
+  document.getElementById('zoomPillBtn').textContent = `🔎 Zoom: ${zoom.label}`;
+  showToast(`Video Zoom: ${zoom.label}`);
+}
 
 // ── YOUTUBE PLAYER INIT WITH FAIL-SAFE ERROR FALLBACK ──
 function onYouTubeIframeAPIReady() {
@@ -629,7 +684,7 @@ function renderFeed(list) {
   }).join('');
 }
 
-// ── PLAY PLAYER SCREEN & MINI PLAYER BAR (INSTANT SWITCHING WITHOUT FREEZING!) ──
+// ── PLAY PLAYER SCREEN & MINI PLAYER BAR ──
 function openWatch(id, title, artist, thumb) {
   currentVideo = { id, title, artist, thumb };
   document.getElementById('wTitle').textContent = title;
@@ -687,6 +742,7 @@ function openWatch(id, title, artist, thumb) {
   ws.scrollTop = 0;
   ws.style.display = 'flex';
   document.getElementById('miniPlayerBar').style.display = 'none';
+  document.body.classList.add('has-open-player');
 
   // GRACEFULLY STOP PREVIOUS VIDEO BEFORE LOADING NEW ONE TO PREVENT MEDIA CODEC STUCK/FREEZE
   stopSeekTimer();
@@ -709,6 +765,7 @@ function openWatch(id, title, artist, thumb) {
 function minimizePlayer() {
   const ws = document.getElementById('watchScreen');
   ws.style.display = 'none';
+  document.body.classList.remove('has-open-player');
   if (currentVideo) {
     document.getElementById('miniPlayerBar').style.display = 'flex';
   }
@@ -718,6 +775,7 @@ function maximizePlayer() {
   const ws = document.getElementById('watchScreen');
   ws.scrollTop = 0;
   ws.style.display = 'flex';
+  document.body.classList.add('has-open-player');
   document.getElementById('miniPlayerBar').style.display = 'none';
 }
 
@@ -739,6 +797,7 @@ function closeWatch() {
   ws.style.display = 'none';
   ws.classList.remove('is-fullscreen');
   document.body.classList.remove('is-landscape');
+  document.body.classList.remove('has-open-player');
   document.getElementById('mainNav').style.display = 'flex';
   document.getElementById('miniPlayerBar').style.display = 'none';
   currentVideo = null;
@@ -895,7 +954,7 @@ function handleHardwareBack() {
   return false;
 }
 
-// ── ORIENTATION FULLSCREEN ──
+// ── AUTOMATIC FULLSCREEN LANDSCAPE ORIENTATION FOR MOBILE ──
 function checkAutoOrientation() {
   const ws = document.getElementById('watchScreen');
   const nav = document.getElementById('mainNav');
