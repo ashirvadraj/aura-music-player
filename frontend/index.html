@@ -38,14 +38,19 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
 /* ── SEARCH BAR ── */
 .yt-search-bar{
   padding:.6rem 1rem;background:var(--bg);border-bottom:1px solid var(--border);
-  display:flex;gap:.5rem;align-items:center;flex-shrink:0;
+  display:flex;gap:.5rem;align-items:center;flex-shrink:0;z-index:20;
 }
 .yt-input-box{
   flex:1;background:#121212;border:1px solid #303030;border-radius:20px;
-  padding:.4rem 1rem;display:flex;align-items:center;gap:.6rem;
+  padding:.4rem.8rem;display:flex;align-items:center;gap:.6rem;position:relative;
 }
 .yt-input-box input{flex:1;background:none;border:none;outline:none;color:#fff;font-size:.95rem;}
-.yt-clear-btn{color:var(--muted);font-size:1.1rem;cursor:pointer;display:none;padding:0 .2rem;}
+.yt-clear-btn{
+  background:none;border:none;color:var(--muted);font-size:1.2rem;
+  cursor:pointer;display:none;padding:.2rem .6rem;z-index:50;
+  touch-action:manipulation;-webkit-user-select:none;
+}
+.yt-clear-btn:active{color:#fff;transform:scale(1.2);}
 .yt-search-btn{background:#222;border:1px solid #303030;border-radius:20px;color:#fff;padding:.45rem 1rem;font-weight:500;cursor:pointer;flex-shrink:0;}
 
 /* ── MUSIC GENRE CHIPS BAR ── */
@@ -189,7 +194,9 @@ body.is-landscape .yt-nav { display: none !important; }
         oninput="toggleClearBtn()"
         onkeydown="handleSearchKey(event)"
         onblur="dismissKeyboard()" />
-      <span class="yt-clear-btn" id="clearBtn" onclick="clearSearch()">✕</span>
+      <button type="button" class="yt-clear-btn" id="clearBtn"
+        onpointerdown="clearSearch(event)"
+        onclick="clearSearch(event)">✕</button>
     </div>
     <button class="yt-search-btn" onclick="doSearch()">Search</button>
   </div>
@@ -287,6 +294,7 @@ let currentVideo = null;
 let isBgPlaying = false;
 let backPressCount = 0;
 let currentMode = 'youtube'; // 'youtube' or 'ytmusic'
+let searchAbortController = null;
 
 // ── YOUTUBE PLAYER INIT ──
 function onYouTubeIframeAPIReady() {
@@ -311,14 +319,25 @@ function focusSearch() {
 
 function toggleClearBtn() {
   const input = document.getElementById('searchInput');
-  document.getElementById('clearBtn').style.display = input.value.length > 0 ? 'inline' : 'none';
+  document.getElementById('clearBtn').style.display = input.value.length > 0 ? 'inline-block' : 'none';
 }
 
-function clearSearch() {
+function clearSearch(e) {
+  if (e) {
+    try { e.preventDefault(); e.stopPropagation(); } catch(err){}
+  }
   const input = document.getElementById('searchInput');
   input.value = '';
   document.getElementById('clearBtn').style.display = 'none';
   input.blur();
+  if (document.activeElement) document.activeElement.blur();
+
+  if (searchAbortController) {
+    try { searchAbortController.abort(); } catch(err){}
+  }
+
+  const feed = document.getElementById('videoFeed');
+  feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">Type any song or video name to search</div>`;
 }
 
 function handleSearchKey(e) {
@@ -342,6 +361,12 @@ async function doSearch() {
   if (!q) return;
 
   document.getElementById('searchInput').blur();
+  if (document.activeElement) document.activeElement.blur();
+
+  if (searchAbortController) {
+    try { searchAbortController.abort(); } catch(err){}
+  }
+  searchAbortController = new AbortController();
 
   const feed = document.getElementById('videoFeed');
   const endpoint = currentMode === 'ytmusic' ? `${API}/api/search/ytmusic` : `${API}/api/search/youtube`;
@@ -350,11 +375,17 @@ async function doSearch() {
   feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">${label}</div>`;
 
   try {
-    const r = await fetch(`${endpoint}?q=${encodeURIComponent(q)}`);
+    const timeoutId = setTimeout(() => searchAbortController.abort(), 12000);
+    const r = await fetch(`${endpoint}?q=${encodeURIComponent(q)}`, { signal: searchAbortController.signal });
+    clearTimeout(timeoutId);
     const data = await r.json();
     renderFeed(data.results || []);
   } catch(e) {
-    feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#f44;">Failed to search. Check connection.</div>`;
+    if (e.name === 'AbortError') {
+      feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">Search reset. <br/><br/><button style="background:#333;color:#fff;border:none;padding:.5rem 1rem;border-radius:16px;" onclick="doSearch()">Retry</button></div>`;
+    } else {
+      feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#f44;">Search failed. Check network.<br/><br/><button style="background:#333;color:#fff;border:none;padding:.5rem 1rem;border-radius:16px;" onclick="doSearch()">Retry</button></div>`;
+    }
   }
 }
 
@@ -390,6 +421,7 @@ function openWatch(id, title, artist, thumb) {
   document.getElementById('nowPlayingText').textContent = currentMode === 'ytmusic' ? '🎵 YouTube Music' : 'Now Playing';
 
   document.getElementById('searchInput').blur();
+  if (document.activeElement) document.activeElement.blur();
 
   const ws = document.getElementById('watchScreen');
   ws.style.display = 'flex';
@@ -414,7 +446,7 @@ function openWatch(id, title, artist, thumb) {
 function handleBackFromWatch() {
   const ws = document.getElementById('watchScreen');
   document.getElementById('searchInput').blur();
-  document.activeElement && document.activeElement.blur();
+  if (document.activeElement) document.activeElement.blur();
 
   if (ws.classList.contains('is-fullscreen')) {
     ws.classList.remove('is-fullscreen');
@@ -526,18 +558,15 @@ function switchTab(tab) {
     si.placeholder = 'Search YouTube...';
     genreBar.style.display = 'none';
     document.getElementById('navHome').classList.add('active');
-    si.value = '';
-    toggleClearBtn();
-    feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">Type any song or video name to search</div>`;
+    clearSearch();
   } else if (tab === 'music') {
-    // 🎵 YOUTUBE MUSIC MODE
     currentMode = 'ytmusic';
     logo.classList.add('ytmusic');
     title.textContent = 'YouTube Music';
     si.placeholder = 'Search YouTube Music songs...';
     genreBar.style.display = 'flex';
     document.getElementById('navMusic').classList.add('active');
-    si.value = 'trending hindi music songs 2026';
+    si.value = 'jai ho song';
     toggleClearBtn();
     doSearch();
   } else {
@@ -559,6 +588,7 @@ function switchTab(tab) {
 function handleHardwareBack() {
   const dlModal = document.getElementById('dlModal');
   const ws = document.getElementById('watchScreen');
+  const si = document.getElementById('searchInput');
 
   document.activeElement && document.activeElement.blur();
 
@@ -569,6 +599,12 @@ function handleHardwareBack() {
     return true;
   }
   if (ws.style.display === 'flex') { closeWatch(); return true; }
+
+  // If search input has text, pressing Back clears search first!
+  if (si.value.length > 0) {
+    clearSearch();
+    return true;
+  }
 
   backPressCount++;
   if (backPressCount === 1) {
