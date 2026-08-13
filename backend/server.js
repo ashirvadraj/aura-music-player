@@ -81,6 +81,26 @@ function fetchFastYoutubeApi(query) {
 }
 
 // ─────────────────────────────────────────────
+// ROUTE 0: SEARCH AUTO-SUGGESTIONS API
+// ─────────────────────────────────────────────
+app.get('/api/suggestions', (req, res) => {
+  const { q } = req.query;
+  if (!q) return res.json({ suggestions: [] });
+  const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(q)}`;
+  https.get(url, (apiRes) => {
+    let data = '';
+    apiRes.on('data', chunk => data += chunk);
+    apiRes.on('end', () => {
+      try {
+        const parsed = JSON.parse(data);
+        const suggestions = (parsed && parsed[1]) ? parsed[1] : [];
+        return res.json({ suggestions });
+      } catch(e) { return res.json({ suggestions: [] }); }
+    });
+  }).on('error', () => res.json({ suggestions: [] }));
+});
+
+// ─────────────────────────────────────────────
 // ROUTE 1: YOUTUBE SEARCH (LIGHTNING FAST)
 // ─────────────────────────────────────────────
 app.get('/api/search/youtube', async (req, res) => {
@@ -209,30 +229,27 @@ app.get('/api/search/ytmusic', async (req, res) => {
       return res.json({ results });
     }
   } catch (e) {
-    console.log(`[YTMusic] ytsr error: ${e.message}`);
+    console.log(`[YT Music Search Error]: ${e.message}`);
+    return res.json({ results: [] });
   }
-
-  res.json({ results: [] });
 });
 
 // ─────────────────────────────────────────────
-// ROUTE 1C: SPOTIFY SEARCH
+// ROUTE 1C: SPOTIFY HIGH QUALITY HITS SEARCH
 // ─────────────────────────────────────────────
 app.get('/api/search/spotify', async (req, res) => {
   const { q } = req.query;
-  const cleanQ = (q || '').replace(/spotify/gi, '').trim();
-  const searchQuery = cleanQ ? `${cleanQ} official audio` : 'top global audio songs 2026';
-  
-  const cacheKey = `sp:${searchQuery.toLowerCase().trim()}`;
+  if (!q) return res.status(400).json({ error: 'Missing query' });
+
+  const querySpotify = `${q} spotify audio track`;
+  const cacheKey = `sp:${querySpotify.toLowerCase().trim()}`;
   const cached = getCachedResults(cacheKey);
   if (cached) return res.json({ results: cached });
 
-  const fastResults = await fetchFastYoutubeApi(searchQuery);
+  const fastResults = await fetchFastYoutubeApi(querySpotify);
   if (fastResults && fastResults.length > 0) {
     const formatted = fastResults.map(item => ({
       ...item,
-      title: item.title ? item.title.replace(/official audio|lyric video|official video/gi, '').trim() : item.title,
-      artist: item.artist || 'Spotify Artist',
       source: 'spotify',
       isAudioOnly: true
     }));
@@ -241,13 +258,13 @@ app.get('/api/search/spotify', async (req, res) => {
   }
 
   try {
-    const searchRes = await ytsr(searchQuery, { limit: 15 });
+    const searchRes = await ytsr(querySpotify, { limit: 15 });
     const items = (searchRes.items || []).filter(i => i.type === 'video');
 
     const results = items.map(item => ({
       id: item.id,
-      title: item.title ? item.title.replace(/official audio|lyric video|official video/gi, '').trim() : 'Spotify Track',
-      artist: item.author ? item.author.name : 'Spotify Artist',
+      title: item.title,
+      artist: item.author ? item.author.name : 'Spotify MP3',
       duration: 0,
       thumbnail: item.bestThumbnail ? item.bestThumbnail.url : `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
       source: 'spotify',
@@ -263,23 +280,21 @@ app.get('/api/search/spotify', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// ROUTE 1D: APPLE MUSIC SEARCH
+// ROUTE 1D: APPLE MUSIC TOP HITS SEARCH
 // ─────────────────────────────────────────────
 app.get('/api/search/applemusic', async (req, res) => {
   const { q } = req.query;
-  const cleanQ = (q || '').replace(/apple music/gi, '').trim();
-  const searchQuery = cleanQ ? `${cleanQ} official audio` : 'top charts audio songs 2026';
+  if (!q) return res.status(400).json({ error: 'Missing query' });
 
-  const cacheKey = `ap:${searchQuery.toLowerCase().trim()}`;
+  const queryApple = `${q} apple music audio`;
+  const cacheKey = `am:${queryApple.toLowerCase().trim()}`;
   const cached = getCachedResults(cacheKey);
   if (cached) return res.json({ results: cached });
 
-  const fastResults = await fetchFastYoutubeApi(searchQuery);
+  const fastResults = await fetchFastYoutubeApi(queryApple);
   if (fastResults && fastResults.length > 0) {
     const formatted = fastResults.map(item => ({
       ...item,
-      title: item.title ? item.title.replace(/official audio|lyric video|official video/gi, '').trim() : item.title,
-      artist: item.artist || 'Apple Music Artist',
       source: 'applemusic',
       isAudioOnly: true
     }));
@@ -288,13 +303,13 @@ app.get('/api/search/applemusic', async (req, res) => {
   }
 
   try {
-    const searchRes = await ytsr(searchQuery, { limit: 15 });
+    const searchRes = await ytsr(queryApple, { limit: 15 });
     const items = (searchRes.items || []).filter(i => i.type === 'video');
 
     const results = items.map(item => ({
       id: item.id,
-      title: item.title ? item.title.replace(/official audio|lyric video|official video/gi, '').trim() : 'Apple Music Track',
-      artist: item.author ? item.author.name : 'Apple Music Artist',
+      title: item.title,
+      artist: item.author ? item.author.name : 'Apple Music MP3',
       duration: 0,
       thumbnail: item.bestThumbnail ? item.bestThumbnail.url : `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
       source: 'applemusic',
