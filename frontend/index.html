@@ -76,7 +76,7 @@ input, textarea, [contenteditable="true"] {
 /* ── FEED / SCROLL ── */
 .yt-feed{flex:1;overflow-y:auto;padding-bottom:70px;}
 
-/* ── YOUTUBE VIDEO CARD ── */
+/* ── YOUTUBE VIDEO / MP3 CARD ── */
 .yt-card{margin-bottom:1.2rem;cursor:pointer;}
 .yt-thumb-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#1e1e1e;}
 .yt-thumb-wrap img{width:100%;height:100%;object-fit:cover;}
@@ -84,6 +84,11 @@ input, textarea, [contenteditable="true"] {
   position:absolute;bottom:8px;right:8px;
   background:rgba(0,0,0,.8);color:#fff;font-size:.75rem;font-weight:500;
   padding:2px 5px;border-radius:4px;
+}
+.ytm-badge{
+  position:absolute;top:8px;left:8px;
+  background:var(--ytmusic-accent);color:#fff;font-size:.7rem;font-weight:700;
+  padding:3px 7px;border-radius:4px;display:flex;align-items:center;gap:3px;
 }
 .yt-details{display:flex;gap:.8rem;padding:.8rem 1rem 0;}
 .yt-avatar{width:36px;height:36px;border-radius:50%;background:#333;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;}
@@ -212,11 +217,11 @@ body.is-landscape .yt-nav { display: none !important; }
 
   <!-- YOUTUBE MUSIC GENRE BAR -->
   <div class="ytm-genre-bar" id="ytmGenreBar">
-    <div class="ytm-genre-chip" onclick="searchGenre('Trending Songs 2026')">🔥 Trending</div>
-    <div class="ytm-genre-chip" onclick="searchGenre('Top Bollywood Music')">🎤 Bollywood Audio</div>
-    <div class="ytm-genre-chip" onclick="searchGenre('Romantic Love Songs')">❤️ Romantic</div>
-    <div class="ytm-genre-chip" onclick="searchGenre('Punjabi Hits Songs')">💃 Punjabi Beats</div>
-    <div class="ytm-genre-chip" onclick="searchGenre('LoFi Chill Beats')">🎧 Lo-Fi Beats</div>
+    <div class="ytm-genre-chip" onclick="searchGenre('Trending Songs 2026')">🔥 Trending MP3</div>
+    <div class="ytm-genre-chip" onclick="searchGenre('Top Songs')">🎤 Top Songs</div>
+    <div class="ytm-genre-chip" onclick="searchGenre('Romantic Love Songs')">❤️ Romantic MP3</div>
+    <div class="ytm-genre-chip" onclick="searchGenre('Punjabi Beats')">💃 Punjabi Beats</div>
+    <div class="ytm-genre-chip" onclick="searchGenre('LoFi Chill Beats')">🎧 Lo-Fi MP3</div>
   </div>
 
   <!-- VIDEO FEED -->
@@ -274,7 +279,7 @@ body.is-landscape .yt-nav { display: none !important; }
 
     <div class="yt-actions-scroll">
       <button class="yt-act-pill" id="bgPlayBtn" onclick="toggleBackgroundPlay()">🎧 Background Play</button>
-      <button class="yt-act-pill dl-accent" onclick="openDlModal()">⬇️ Download</button>
+      <button class="yt-act-pill dl-accent" onclick="openDlModal()">⬇️ Download MP3 / MP4</button>
       <button class="yt-act-pill">👍 Like</button>
       <button class="yt-act-pill">↗️ Share</button>
     </div>
@@ -347,7 +352,6 @@ function clearSearch(e) {
   const feed = document.getElementById('videoFeed');
   feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">Type any song or video name to search</div>`;
   
-  // Re-focus input so user can type immediately!
   setTimeout(() => input.focus(), 50);
 }
 
@@ -381,7 +385,7 @@ async function doSearch() {
 
   const feed = document.getElementById('videoFeed');
   const endpoint = currentMode === 'ytmusic' ? `${API}/api/search/ytmusic` : `${API}/api/search/youtube`;
-  const label = currentMode === 'ytmusic' ? '🎵 Searching YouTube Music...' : '🔍 Searching YouTube...';
+  const label = currentMode === 'ytmusic' ? '🎵 Pulling MP3 songs from YouTube Music...' : '🔍 Searching YouTube...';
 
   feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">${label}</div>`;
 
@@ -391,7 +395,6 @@ async function doSearch() {
     clearTimeout(timeoutId);
     
     if (!r.ok) {
-      // Fallback to primary search endpoint if ytmusic specific endpoint errored
       const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
       const fallbackData = await fallbackR.json();
       renderFeed(fallbackData.results || []);
@@ -402,7 +405,6 @@ async function doSearch() {
     if (data.results && data.results.length > 0) {
       renderFeed(data.results);
     } else {
-      // Direct fallback
       const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
       const fallbackData = await fallbackR.json();
       renderFeed(fallbackData.results || []);
@@ -411,7 +413,6 @@ async function doSearch() {
     if (e.name === 'AbortError') {
       feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">Search reset. <br/><br/><button style="background:#333;color:#fff;border:none;padding:.5rem 1rem;border-radius:16px;" onclick="doSearch()">Retry</button></div>`;
     } else {
-      // Try fallback automatically on error
       try {
         const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
         const fallbackData = await fallbackR.json();
@@ -434,12 +435,13 @@ function renderFeed(list) {
       <div class="yt-thumb-wrap">
         <img src="${item.thumbnail}" loading="lazy"/>
         <div class="yt-dur">${fmtSec(item.duration)}</div>
+        ${currentMode === 'ytmusic' ? '<div class="ytm-badge">🎵 MP3 Song</div>' : ''}
       </div>
       <div class="yt-details">
         <div class="yt-avatar">${(item.artist||'Y')[0].toUpperCase()}</div>
         <div class="yt-meta">
           <div class="yt-title">${item.title}</div>
-          <div class="yt-subtext">${item.artist||(currentMode === 'ytmusic' ? 'YouTube Music' : 'YouTube')} · ${fmtSec(item.duration)}</div>
+          <div class="yt-subtext">${item.artist||(currentMode === 'ytmusic' ? 'YouTube Music Track' : 'YouTube')} · ${fmtSec(item.duration)}</div>
         </div>
       </div>
     </div>`).join('');
@@ -451,8 +453,8 @@ function openWatch(id, title, artist, thumb) {
   document.getElementById('wTitle').textContent = title;
   document.getElementById('wChannel').textContent = artist;
   document.getElementById('wAvatar').textContent = (artist||'Y')[0].toUpperCase();
-  document.getElementById('wBadge').textContent = currentMode === 'ytmusic' ? 'YouTube Music' : 'YouTube';
-  document.getElementById('nowPlayingText').textContent = currentMode === 'ytmusic' ? '🎵 YouTube Music' : 'Now Playing';
+  document.getElementById('wBadge').textContent = currentMode === 'ytmusic' ? 'YouTube Music (MP3 Available)' : 'YouTube';
+  document.getElementById('nowPlayingText').textContent = currentMode === 'ytmusic' ? '🎵 YouTube Music MP3' : 'Now Playing';
 
   document.getElementById('searchInput').blur();
   if (document.activeElement) document.activeElement.blur();
@@ -576,7 +578,7 @@ function showToast(msg, ms = 2500) {
   t._tid = setTimeout(() => { t.style.display = 'none'; }, ms);
 }
 
-// ── TAB SWITCHING (YOUTUBE MUSIC INTEGRATION) ──
+// ── TAB SWITCHING (CLEAN SEARCH & YOUTUBE MUSIC MP3 INTEGRATION) ──
 function switchTab(tab) {
   document.querySelectorAll('.yt-nav-item').forEach(el => el.classList.remove('active'));
   const feed = document.getElementById('videoFeed');
@@ -602,21 +604,21 @@ function switchTab(tab) {
     si.placeholder = 'Search YouTube Music songs...';
     genreBar.style.display = 'flex';
     document.getElementById('navMusic').classList.add('active');
-    si.value = 'latest bollywood songs';
+    // CLEAN 100% EMPTY SEARCH (REMOVED DEFAULT BOLLYWOOD SUGGESTION!)
+    si.value = '';
     toggleClearBtn();
-    doSearch();
+    feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">🎵 Search any song from YouTube Music or tap a category above</div>`;
   } else {
     currentMode = 'youtube';
     logo.classList.remove('ytmusic');
     title.textContent = 'YouTube';
     si.placeholder = 'Search YouTube...';
     genreBar.style.display = 'none';
-    const queries = { subs:'latest release music videos', you:'top hits songs 2026 playlist' };
     const ids = { subs:'navSubs', you:'navYou' };
     document.getElementById(ids[tab]).classList.add('active');
-    si.value = queries[tab] || '';
+    si.value = '';
     toggleClearBtn();
-    doSearch();
+    feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">Type any search query</div>`;
   }
 }
 
