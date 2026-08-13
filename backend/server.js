@@ -86,6 +86,71 @@ app.get('/api/search/youtube', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
+// ROUTE 1B: YOUTUBE MUSIC SEARCH
+// ─────────────────────────────────────────────
+app.get('/api/search/ytmusic', async (req, res) => {
+  const { q } = req.query;
+  if (!q) return res.status(400).json({ error: 'Missing query' });
+
+  const queryWithMusic = q.toLowerCase().includes('music') || q.toLowerCase().includes('song') ? q : `${q} official audio song`;
+
+  try {
+    const searchRes = await ytsr(queryWithMusic, { limit: 20 });
+    const items = (searchRes.items || []).filter(i => i.type === 'video');
+
+    if (items.length > 0) {
+      const results = items.map(item => {
+        let durSec = 0;
+        if (item.duration) {
+          const parts = item.duration.split(':').map(Number);
+          if (parts.length === 2) durSec = parts[0] * 60 + parts[1];
+          else if (parts.length === 3) durSec = parts[0] * 3600 + parts[1] * 60 + parts[2];
+        }
+        return {
+          id: item.id,
+          title: item.title.replace(/\(Official Audio\)/gi, '').replace(/\[Official Audio\]/gi, '').trim(),
+          artist: item.author ? item.author.name : 'YouTube Music',
+          duration: durSec,
+          thumbnail: item.bestThumbnail ? item.bestThumbnail.url : `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
+          source: 'ytmusic',
+          videoId: item.id
+        };
+      });
+      return res.json({ results });
+    }
+  } catch (e) {
+    console.log(`[YTMusic] ytsr error: ${e.message}`);
+  }
+
+  execFile(YTDLP, [
+    ...YTDLP_ARGS_PREFIX,
+    `ytsearch15:${queryWithMusic}`,
+    '--dump-json',
+    '--flat-playlist',
+    '--no-warnings',
+    '--quiet'
+  ], { maxBuffer: 5 * 1024 * 1024 }, (err, stdout) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const lines = stdout.trim().split('\n').filter(Boolean);
+    const results = lines.map(line => {
+      try {
+        const item = JSON.parse(line);
+        return {
+          id: item.id,
+          title: item.title,
+          artist: item.uploader || item.channel || 'YouTube Music',
+          duration: item.duration || 0,
+          thumbnail: item.thumbnail || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
+          source: 'ytmusic',
+          videoId: item.id
+        };
+      } catch { return null; }
+    }).filter(Boolean);
+    res.json({ results });
+  });
+});
+
+// ─────────────────────────────────────────────
 // ROUTE 2: DOWNLOAD (MP3 / MP4)
 // ─────────────────────────────────────────────
 // ROUTE 2: DOWNLOAD (MP3 / MP4 Instant Pipe Stream)
