@@ -179,10 +179,6 @@ input, textarea, [contenteditable="true"] {
   z-index: -999 !important; overflow: hidden !important;
 }
 
-.yt-watch-screen.is-fullscreen .yt-watch-topbar,
-.yt-watch-screen.is-fullscreen .yt-watch-info,
-.yt-watch-screen.is-fullscreen .yt-nav { display:none!important; }
-
 .yt-watch-topbar{
   height:calc(48px + var(--safe-top));
   padding-top:var(--safe-top);
@@ -194,7 +190,7 @@ input, textarea, [contenteditable="true"] {
 
 .yt-player-box{
   width:100%;aspect-ratio:16/9;background:#000;position:relative;z-index:10;
-  overflow:hidden;touch-action:none;
+  overflow:hidden;touch-action:manipulation;
 }
 
 /* ZOOM WRAPPER CONTAINER */
@@ -210,40 +206,25 @@ input, textarea, [contenteditable="true"] {
   width:100%!important;height:100%!important;border:none!important;
 }
 
-/* 2-FINGER TOUCH PINCH-TO-ZOOM OVERLAY LAYER ABOVE IFRAME */
-.touch-overlay-gesture {
-  position: absolute; inset: 0; z-index: 20;
-  background: rgba(0,0,0,0.001); touch-action: none; display: block !important;
+/* ── FLOATING TOP ACTION BAR FOR LANDSCAPE (NON-BLOCKING POINTER-EVENTS) ── */
+.landscape-top-actions {
+  position: absolute; top: max(10px, env(safe-area-inset-top)); right: 12px;
+  z-index: 9999; display: none; align-items: center; gap: .5rem;
+  pointer-events: none;
 }
-
-/* ── ORIGINAL YOUTUBE ANIMATED DOUBLE-TAP SEEK RIPPLE OVERLAYS ── */
-.yt-doubletap-ripple {
-  position: absolute; top: 0; bottom: 0; width: 50%;
-  z-index: 22; display: flex; align-items: center; justify-content: center;
-  pointer-events: none; opacity: 0; transition: opacity 0.2s ease;
-  overflow: hidden;
+body.is-landscape .landscape-top-actions {
+  display: flex !important;
 }
-.yt-doubletap-ripple.left { left: 0; border-radius: 0 100% 100% 0 / 0 50% 50% 0; }
-.yt-doubletap-ripple.right { right: 0; border-radius: 100% 0 0 100% / 50% 0 0 50%; }
-
-.yt-doubletap-ripple.active {
-  opacity: 1; background: rgba(255,255,255,.2);
-  animation: youtubeRipplePulse 0.65s ease-out forwards;
+.ls-action-chip {
+  pointer-events: auto !important;
+  background: rgba(0,0,0,.7); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,.25); border-radius: 16px;
+  color: #fff; padding: .35rem .75rem; font-size: .78rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.6);
 }
+.ls-action-chip:active { background: #ff0000; }
 
-.ripple-content {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,.8); z-index: 2;
-}
-
-@keyframes youtubeRipplePulse {
-  0% { opacity: 0; transform: scale(0.85); }
-  30% { opacity: 1; transform: scale(1); }
-  80% { opacity: 1; transform: scale(1.05); }
-  100% { opacity: 0; transform: scale(1.1); }
-}
-
-/* ── AUDIO SEEK SLIDER (SHOWS ONLY IN AUDIO MODES SO YOUTUBE HAS EXACTLY 1 NATIVE SLIDER) ── */
+/* ── AUDIO SEEK SLIDER (SHOWS ONLY IN SPOTIFY/APPLE MUSIC AUDIO MODES) ── */
 .yt-red-slider-container {
   width: 100%; padding: 8px 1rem 4px; background: #121212;
   display: none; flex-direction: column; gap: 4px; border-bottom: 1px solid #222;
@@ -269,55 +250,6 @@ body.audio-mode .yt-red-slider-container {
 .yt-red-seek-input:active::-webkit-slider-thumb {
   transform: scale(1.4);
 }
-
-/* ── SLEEK IMMERSIVE FULLSCREEN TOUCH CONTROL OVERLAY (SHOWS ONLY IN LANDSCAPE FULLSCREEN WHEN TAPPED) ── */
-.fullscreen-touch-overlay {
-  position: absolute; inset: 0; z-index: 25;
-  background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
-  display: none; flex-direction: column; justify-content: space-between;
-  padding: max(16px, env(safe-area-inset-top)) 1.2rem 1.2rem;
-  opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
-}
-body.is-landscape .fullscreen-touch-overlay {
-  display: flex !important;
-}
-.fullscreen-touch-overlay.visible {
-  opacity: 1 !important; pointer-events: auto !important;
-}
-
-.fs-topbar { display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
-.fs-actions { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
-.fs-chip-btn {
-  background: rgba(255,255,255,.2); backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,.3); border-radius: 16px;
-  color: #fff; padding: .4rem .8rem; font-size: .8rem; font-weight: 700;
-  cursor: pointer; white-space: nowrap;
-}
-.fs-chip-btn:active { background: #ff0000; }
-
-.fs-center-controls {
-  display: flex; align-items: center; justify-content: center; gap: 2rem;
-}
-.fs-play-btn {
-  background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.25);
-  border-radius: 50%; color: #fff; width: 48px; height: 48px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.1rem; font-weight: 700; cursor: pointer; backdrop-filter: blur(10px);
-}
-.fs-play-btn.main { width: 64px; height: 64px; font-size: 1.6rem; background: var(--accent); border: none; }
-
-.fs-quality-menu {
-  position: absolute; top: 60px; right: 20px; z-index: 30;
-  background: #1c1c1e; border: 1px solid #333; border-radius: 14px;
-  padding: .8rem; display: none; flex-direction: column; gap: 6px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.9);
-}
-.fs-q-option {
-  background: #2a2a2c; border: none; border-radius: 8px;
-  color: #fff; padding: .5rem 1rem; font-size: .82rem; font-weight: 600;
-  cursor: pointer; text-align: left;
-}
-.fs-q-option:active { background: var(--accent); }
 
 /* ── 100% HARDWARE FULLSCREEN LANDSCAPE FILL ── */
 @media screen and (orientation: landscape) {
@@ -374,18 +306,14 @@ body.is-landscape .fullscreen-touch-overlay {
 .yt-watch-title{font-size:1.05rem;font-weight:700;line-height:1.4;}
 .yt-watch-views{font-size:.8rem;color:var(--muted);margin-top:4px;}
 
-/* ── MUSIC SEEK BAR & AUDIO CONTROLS ── */
+/* ── MUSIC CONTROLS PANEL FOR AUDIO MODES ── */
 .music-controls-panel{
   background:#181818;border:1px solid #303030;border-radius:14px;
-  padding:.9rem 1rem;margin:.8rem 0;display:flex;flex-direction:column;gap:.7rem;
+  padding:.9rem 1rem;margin:.8rem 0;display:none;flex-direction:column;gap:.7rem;
 }
+body.audio-mode .music-controls-panel { display: flex !important; }
 
 .music-buttons-row{display:flex;align-items:center;justify-content:center;gap:1.5rem;margin-top:2px;}
-.music-btn{
-  background:#262626;border:1px solid #404040;border-radius:20px;color:#fff;
-  padding:.5rem 1rem;font-size:.85rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;
-}
-.music-btn:active{background:#3a3a3a;transform:scale(0.95);}
 .music-play-main-btn{
   background:var(--spotify-accent);color:#000;border:none;border-radius:24px;
   padding:.65rem 1.8rem;font-size:1.05rem;font-weight:800;cursor:pointer;
@@ -451,7 +379,7 @@ body.audio-mode .zoom-controls-group { display: none !important; }
 <audio id="bgAudioKeeper" loop src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="></audio>
 
 <div class="app" id="appRoot">
-  <!-- RESUME PLAYBACK POSITION BANNER -->
+  <!-- RESUME PLAYBACK BANNER -->
   <div class="resume-banner" id="resumeBanner" onclick="resumeLastPlayed()">
     <span class="resume-banner-text" id="resumeBannerText">▶ Resume: Song Name (0:00)</span>
     <span class="resume-btn-chip">Resume</span>
@@ -532,7 +460,7 @@ body.audio-mode .zoom-controls-group { display: none !important; }
   </div>
 </div>
 
-<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN -->
+<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN WITH 100% ORIGINAL YOUTUBE CONTROLS -->
 <div class="yt-watch-screen" id="watchScreen">
   <div class="yt-watch-topbar">
     <button class="yt-back-btn" onclick="handleBackFromWatch()">← Back</button>
@@ -549,51 +477,12 @@ body.audio-mode .zoom-controls-group { display: none !important; }
       <div id="ytPlayerContainer"></div>
     </div>
 
-    <!-- 100% WORKING 2-FINGER PINCH & YOUTUBE DOUBLE-TAP SEEK OVERLAY -->
-    <div class="touch-overlay-gesture" id="touchGestureOverlay"></div>
-
-    <!-- YOUTUBE ANIMATED DOUBLE-TAP SEEK RIPPLE OVERLAYS -->
-    <div class="yt-doubletap-ripple left" id="rippleLeft">
-      <div class="ripple-content">
-        <div style="font-size:1.6rem;">⏪</div>
-        <div style="font-size:.82rem;font-weight:800;margin-top:2px;">10 seconds</div>
-      </div>
-    </div>
-    <div class="yt-doubletap-ripple right" id="rippleRight">
-      <div class="ripple-content">
-        <div style="font-size:1.6rem;">⏩</div>
-        <div style="font-size:.82rem;font-weight:800;margin-top:2px;">10 seconds</div>
-      </div>
-    </div>
-
-    <!-- FULLSCREEN LANDSCAPE TOUCH OVERLAY (SHOWS ONLY IN LANDSCAPE FULLSCREEN WHEN TAPPED) -->
-    <div class="fullscreen-touch-overlay" id="fullscreenTouchOverlay" onclick="handleFullscreenTap(event)">
-      <div class="fs-topbar">
-        <div style="font-weight:700;font-size:.9rem;color:#fff;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="fsTitle">Video Title</div>
-        <div class="fs-actions">
-          <button class="fs-chip-btn" id="ccToggleBtn" onclick="toggleSubtitles(event)">💬 CC</button>
-          <button class="fs-chip-btn" id="muteToggleBtn" onclick="toggleMute(event)">🔊 Sound</button>
-          <button class="fs-chip-btn" id="qualitySelectBtn" onclick="openQualityMenu(event)">⚙️ Quality: 720p</button>
-          <button class="fs-chip-btn" onclick="cycleZoomLevel(event)">🔎 Zoom</button>
-          <button class="fs-chip-btn" onclick="minimizePlayer(event)">↓ Exit</button>
-        </div>
-      </div>
-
-      <div class="fs-center-controls">
-        <button class="fs-play-btn" onclick="skipTrack(-10); event.stopPropagation();">⏪ 10s</button>
-        <button class="fs-play-btn main" id="fsPlayBtn" onclick="togglePlayPause(); event.stopPropagation();">⏸</button>
-        <button class="fs-play-btn" onclick="skipTrack(10); event.stopPropagation();">⏩ 10s</button>
-      </div>
-
-      <!-- QUALITY MENU DROPDOWN -->
-      <div class="fs-quality-menu" id="fsQualityMenu" onclick="event.stopPropagation()">
-        <div style="font-size:.8rem;font-weight:700;margin-bottom:4px;color:#aaa;">Video Quality</div>
-        <button class="fs-q-option" onclick="changeQuality('hd1080', event)">1080p Full HD</button>
-        <button class="fs-q-option" onclick="changeQuality('720p', event)">720p HD</button>
-        <button class="fs-q-option" onclick="changeQuality('480p', event)">480p SD</button>
-        <button class="fs-q-option" onclick="changeQuality('360p', event)">360p Low</button>
-        <button class="fs-q-option" onclick="changeQuality('auto', event)">Auto (Recommended)</button>
-      </div>
+    <!-- NON-BLOCKING FLOATING LANDSCAPE CONTROLS BAR (ZOOM, CC, QUALITY) -->
+    <div class="landscape-top-actions">
+      <button class="ls-action-chip" onclick="cycleZoomLevel(event)">🔎 Zoom: <span id="lsZoomLabel">100%</span></button>
+      <button class="ls-action-chip" onclick="toggleSubtitles(event)">💬 CC</button>
+      <button class="ls-action-chip" onclick="cycleQuality(event)">⚙️ Quality: <span id="lsQualityLabel">Auto</span></button>
+      <button class="ls-action-chip" onclick="toggleCurrentLove()">❤️</button>
     </div>
 
     <div class="music-album-overlay" id="musicAlbumOverlay">
@@ -606,7 +495,7 @@ body.audio-mode .zoom-controls-group { display: none !important; }
     </div>
   </div>
 
-  <!-- AUDIO SEEK SLIDER (SHOWS ONLY IN AUDIO MODES SO YOUTUBE HAS EXACTLY 1 NATIVE SLIDER IN BOTH PORTRAIT & LANDSCAPE) -->
+  <!-- AUDIO SEEK SLIDER (SHOWS ONLY IN SPOTIFY/APPLE MUSIC AUDIO MODES) -->
   <div class="yt-red-slider-container">
     <input type="range" class="yt-red-seek-input" id="musicSeekSlider" value="0" min="0" max="100" oninput="seekTrack(this.value)" />
     <div class="yt-red-slider-row">
@@ -619,13 +508,10 @@ body.audio-mode .zoom-controls-group { display: none !important; }
     <div class="yt-watch-title" id="wTitle">Song Title</div>
     <div class="yt-watch-views" id="wViews">Audio Track · Official Stream</div>
 
-    <!-- AUDIO CONTROLS PANEL (MAIN PLAY/PAUSE & DOUBLE TAP TIP) -->
+    <!-- AUDIO CONTROLS PANEL FOR AUDIO MODES -->
     <div class="music-controls-panel">
       <div class="music-buttons-row">
         <button class="music-play-main-btn" id="musicMainPlayBtn" onclick="togglePlayPause()">⏸ Pause</button>
-      </div>
-      <div style="text-align:center;font-size:.75rem;color:#aaa;margin-top:2px;font-weight:500;">
-        👈 Double-tap left side to Rewind 10s | Double-tap right side to Forward 10s 👉
       </div>
     </div>
 
@@ -681,8 +567,10 @@ let backPressCount = 0;
 let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic', 'favorites'
 let searchAbortController = null;
 let seekTimer = null;
-let savePositionTimer = null;
 let isUserPaused = false;
+let isCcOn = false;
+let currentQualityIdx = 0;
+const qualities = ['auto', 'hd1080', '720p', '480p', '360p'];
 
 // CLIENT SIDE SEARCH CACHE (INSTANT 0ms RESPONSES)
 const clientSearchCache = new Map();
@@ -780,37 +668,9 @@ function resumeLastPlayed() {
   } catch(e){}
 }
 
-// ── FULLSCREEN TOUCH OVERLAY, CC, SOUND & QUALITY CONTROLS ──
-let fsOverlayTimer = null;
-let isCcOn = false;
-
-function handleFullscreenTap(e) {
-  if (!document.body.classList.contains('is-landscape')) return;
-  if (e) { try { e.preventDefault(); e.stopPropagation(); } catch(err){} }
-  const overlay = document.getElementById('fullscreenTouchOverlay');
-  const isVisible = overlay.classList.contains('visible');
-
-  if (isVisible) {
-    overlay.classList.remove('visible');
-    document.getElementById('fsQualityMenu').style.display = 'none';
-    if (fsOverlayTimer) clearTimeout(fsOverlayTimer);
-  } else {
-    overlay.classList.add('visible');
-    resetFsOverlayTimer();
-  }
-}
-
-function resetFsOverlayTimer() {
-  if (fsOverlayTimer) clearTimeout(fsOverlayTimer);
-  fsOverlayTimer = setTimeout(() => {
-    document.getElementById('fullscreenTouchOverlay').classList.remove('visible');
-    document.getElementById('fsQualityMenu').style.display = 'none';
-  }, 3500);
-}
-
+// ── CC SUBTITLES & QUALITY TOGGLES FOR LANDSCAPE ──
 function toggleSubtitles(e) {
   if (e) e.stopPropagation();
-  resetFsOverlayTimer();
   isCcOn = !isCcOn;
   if (ytPlayer && ytPlayer.setOption) {
     try {
@@ -818,43 +678,19 @@ function toggleSubtitles(e) {
       ytPlayer.setOption("captions", "track", isCcOn ? { languageCode: "en" } : {});
     } catch(err){}
   }
-  const btn = document.getElementById('ccToggleBtn');
-  if (btn) btn.textContent = isCcOn ? '💬 CC On' : '💬 CC Off';
   showToast(isCcOn ? 'CC Subtitles Enabled' : 'CC Subtitles Disabled');
 }
 
-function toggleMute(e) {
+function cycleQuality(e) {
   if (e) e.stopPropagation();
-  resetFsOverlayTimer();
-  if (ytPlayer) {
-    if (ytPlayer.isMuted()) {
-      ytPlayer.unMute();
-      document.getElementById('muteToggleBtn').textContent = '🔊 Sound On';
-      showToast('Sound Unmuted');
-    } else {
-      ytPlayer.mute();
-      document.getElementById('muteToggleBtn').textContent = '🔇 Muted';
-      showToast('Sound Muted');
-    }
-  }
-}
-
-function openQualityMenu(e) {
-  if (e) e.stopPropagation();
-  resetFsOverlayTimer();
-  const qMenu = document.getElementById('fsQualityMenu');
-  qMenu.style.display = qMenu.style.display === 'flex' ? 'none' : 'flex';
-}
-
-function changeQuality(q, e) {
-  if (e) e.stopPropagation();
-  document.getElementById('fsQualityMenu').style.display = 'none';
-  resetFsOverlayTimer();
+  currentQualityIdx = (currentQualityIdx + 1) % qualities.length;
+  const q = qualities[currentQualityIdx];
   if (ytPlayer && ytPlayer.setPlaybackQuality) {
     try { ytPlayer.setPlaybackQuality(q); } catch(err){}
   }
-  document.getElementById('qualitySelectBtn').textContent = `⚙️ Quality: ${q.toUpperCase()}`;
-  showToast(`Video Quality Set: ${q.toUpperCase()}`);
+  const qLbl = document.getElementById('lsQualityLabel');
+  if (qLbl) qLbl.textContent = q.toUpperCase();
+  showToast(`Video Quality: ${q.toUpperCase()}`);
 }
 
 // ── FAVORITES / LOVED SONGS PLAYLIST SYSTEM ──
@@ -945,12 +781,9 @@ function updateCurrentLoveUI() {
 
 // ── GUARANTEED 100% WORKING ZOOM WRAPPER SYSTEM ──
 let zoomScale = 1.0;
-let initialPinchDist = 0;
-let initialScale = 1.0;
 
 function setZoomLevel(scaleVal, e) {
   if (e) e.stopPropagation();
-  resetFsOverlayTimer();
   zoomScale = Math.min(Math.max(scaleVal, 1.0), 3.5);
   const wrapper = document.getElementById('zoomWrapper');
   if (wrapper) {
@@ -968,6 +801,9 @@ function setZoomLevel(scaleVal, e) {
 
   const pct = Math.round(zoomScale * 100);
   document.getElementById('zoomToggleBtn').textContent = `🔎 ${pct}%`;
+  const lsLbl = document.getElementById('lsZoomLabel');
+  if (lsLbl) lsLbl.textContent = `${pct}%`;
+
   showToast(`Screen Zoom: ${pct}%`);
 }
 
@@ -979,91 +815,19 @@ function cycleZoomLevel(e) {
   else setZoomLevel(1.0);
 }
 
-// ── 100% ACCURATE DOUBLE-TAP 10s GESTURE & 2-FINGER PINCH ──
-let tapCount = 0;
-let tapTimer = null;
-
-function triggerDoubleTapRipple(side) {
-  const ripple = document.getElementById(side === 'left' ? 'rippleLeft' : 'rippleRight');
-  if (ripple) {
-    ripple.classList.remove('active');
-    void ripple.offsetWidth; // trigger reflow
-    ripple.classList.add('active');
-    setTimeout(() => { ripple.classList.remove('active'); }, 650);
-  }
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   loadLovedSongs();
   checkResumeBanner();
-
-  const overlay = document.getElementById('touchGestureOverlay');
-
-  // POINTER DOWN TOUCH TRACKING FOR 100% ACCURATE DOUBLE TAP
-  overlay.addEventListener('pointerdown', (e) => {
-    const rect = overlay.getBoundingClientRect();
-    const touchX = e.clientX - rect.left;
-    const isLeft = touchX < (rect.width / 2);
-
-    tapCount++;
-    if (tapCount === 1) {
-      tapTimer = setTimeout(() => {
-        tapCount = 0;
-        if (document.body.classList.contains('is-landscape')) {
-          handleFullscreenTap(e);
-        } else {
-          togglePlayPause();
-        }
-      }, 260);
-    } else if (tapCount === 2) {
-      clearTimeout(tapTimer);
-      tapCount = 0;
-      if (isLeft) {
-        skipTrack(-10);
-        triggerDoubleTapRipple('left');
-        showToast('⏪ Rewind 10s');
-      } else {
-        skipTrack(10);
-        triggerDoubleTapRipple('right');
-        showToast('⏩ Forward 10s');
-      }
-    }
-  });
-
-  // 2-FINGER PINCH TO ZOOM GESTURES
-  overlay.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 2) {
-      initialPinchDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      initialScale = zoomScale;
-    }
-  }, { passive: true });
-
-  overlay.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 2 && initialPinchDist > 0) {
-      const currentDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const factor = currentDist / initialPinchDist;
-      setZoomLevel(initialScale * factor);
-    }
-  }, { passive: true });
-
-  overlay.addEventListener('touchend', (e) => {
-    if (e.touches.length < 2) {
-      initialPinchDist = 0;
-    }
-  }, { passive: true });
 });
 
-// ── YOUTUBE PLAYER INIT WITH FAIL-SAFE ERROR FALLBACK ──
+// ── YOUTUBE PLAYER INIT WITH CC & QUALITY OPTIONS ENABLED ──
 function onYouTubeIframeAPIReady() {
   ytPlayer = new YT.Player('ytPlayerContainer', {
     height: '100%', width: '100%',
-    playerVars: { autoplay: 1, controls: 1, rel: 0, playsinline: 1, enablejsapi: 1, fs: 1 },
+    playerVars: {
+      autoplay: 1, controls: 1, rel: 0, playsinline: 1, enablejsapi: 1, fs: 1,
+      modestbranding: 0, cc_load_policy: 1, iv_load_policy: 1
+    },
     events: {
       'onStateChange': onPlayerStateChange,
       'onError': onPlayerError
@@ -1095,12 +859,10 @@ async function onPlayerError(e) {
 function onPlayerStateChange(e) {
   const btn = document.getElementById('musicMainPlayBtn');
   const miniBtn = document.getElementById('miniPlayBtn');
-  const fsBtn = document.getElementById('fsPlayBtn');
 
   if (e.data === YT.PlayerState.PLAYING) {
     if (btn) btn.textContent = '⏸ Pause';
     if (miniBtn) miniBtn.textContent = '⏸';
-    if (fsBtn) fsBtn.textContent = '⏸';
     startSeekTimer();
     startBgAudioKeeper();
     setupMediaSession();
@@ -1114,7 +876,6 @@ function onPlayerStateChange(e) {
     } else {
       if (btn) btn.textContent = '▶ Play';
       if (miniBtn) miniBtn.textContent = '▶';
-      if (fsBtn) fsBtn.textContent = '▶';
       stopSeekTimer();
     }
   }
@@ -1376,7 +1137,6 @@ function openWatch(id, title, artist, thumb) {
   document.getElementById('wTitle').textContent = title;
   document.getElementById('wChannel').textContent = artist;
   document.getElementById('wAvatar').textContent = (artist||'S')[0].toUpperCase();
-  document.getElementById('fsTitle').textContent = title;
 
   // Update Mini Player Bar
   document.getElementById('miniPlayerImg').src = thumb;
