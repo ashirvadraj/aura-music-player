@@ -125,11 +125,13 @@ app.get('/api/search/ytmusic', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// ROUTE 1C: SPOTIFY SEARCH (100% EMBEDDABLE PLAYABLE AUDIO)
+// ROUTE 1C: SPOTIFY SEARCH (CLEANED EMBEDDABLE AUDIO QUERY)
 // ─────────────────────────────────────────────
 app.get('/api/search/spotify', async (req, res) => {
   const { q } = req.query;
-  const searchQuery = q ? `${q} official audio lyrics` : 'top global audio songs 2026';
+  // STRIP 'spotify' BRANDING WORDS TO AVOID EMBED-BLOCKED PLAYLIST PROMOS
+  const cleanQ = (q || '').replace(/spotify/gi, '').trim();
+  const searchQuery = cleanQ ? `${cleanQ} official audio` : 'top global audio songs 2026';
 
   try {
     const searchRes = await ytsr(searchQuery, { limit: 20 });
@@ -153,11 +155,12 @@ app.get('/api/search/spotify', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// ROUTE 1D: APPLE MUSIC SEARCH (100% EMBEDDABLE PLAYABLE AUDIO)
+// ROUTE 1D: APPLE MUSIC SEARCH (CLEANED EMBEDDABLE AUDIO QUERY)
 // ─────────────────────────────────────────────
 app.get('/api/search/applemusic', async (req, res) => {
   const { q } = req.query;
-  const searchQuery = q ? `${q} official audio song` : 'top apple charts audio songs 2026';
+  const cleanQ = (q || '').replace(/apple music/gi, '').trim();
+  const searchQuery = cleanQ ? `${cleanQ} official audio` : 'top charts audio songs 2026';
 
   try {
     const searchRes = await ytsr(searchQuery, { limit: 20 });
