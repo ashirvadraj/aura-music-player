@@ -92,7 +92,7 @@ app.get('/api/search/ytmusic', async (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Missing query' });
 
-  const queryWithMusic = q.toLowerCase().includes('music') || q.toLowerCase().includes('song') ? q : `${q} official audio song`;
+  const queryWithMusic = q.toLowerCase().includes('song') || q.toLowerCase().includes('music') ? q : `${q} song`;
 
   try {
     const searchRes = await ytsr(queryWithMusic, { limit: 20 });
@@ -108,7 +108,7 @@ app.get('/api/search/ytmusic', async (req, res) => {
         }
         return {
           id: item.id,
-          title: item.title.replace(/\(Official Audio\)/gi, '').replace(/\[Official Audio\]/gi, '').trim(),
+          title: item.title ? item.title.replace(/\(Official Audio\)/gi, '').replace(/\[Official Audio\]/gi, '').trim() : 'Track',
           artist: item.author ? item.author.name : 'YouTube Music',
           duration: durSec,
           thumbnail: item.bestThumbnail ? item.bestThumbnail.url : `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
@@ -122,6 +122,27 @@ app.get('/api/search/ytmusic', async (req, res) => {
     console.log(`[YTMusic] ytsr error: ${e.message}`);
   }
 
+  // Fallback 1: Simple ytsr without extra keywords
+  try {
+    const searchRes = await ytsr(q, { limit: 20 });
+    const items = (searchRes.items || []).filter(i => i.type === 'video');
+    if (items.length > 0) {
+      const results = items.map(item => ({
+        id: item.id,
+        title: item.title,
+        artist: item.author ? item.author.name : 'YouTube Music',
+        duration: 0,
+        thumbnail: item.bestThumbnail ? item.bestThumbnail.url : `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
+        source: 'ytmusic',
+        videoId: item.id
+      }));
+      return res.json({ results });
+    }
+  } catch (e) {
+    console.log(`[YTMusic] Simple ytsr error: ${e.message}`);
+  }
+
+  // Fallback 2: yt-dlp
   execFile(YTDLP, [
     ...YTDLP_ARGS_PREFIX,
     `ytsearch15:${queryWithMusic}`,
@@ -130,7 +151,10 @@ app.get('/api/search/ytmusic', async (req, res) => {
     '--no-warnings',
     '--quiet'
   ], { maxBuffer: 5 * 1024 * 1024 }, (err, stdout) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.log(`[YTMusic] yt-dlp error: ${err.message}`);
+      return res.json({ results: [] });
+    }
     const lines = stdout.trim().split('\n').filter(Boolean);
     const results = lines.map(line => {
       try {
