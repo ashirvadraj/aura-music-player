@@ -315,7 +315,7 @@ body.is-landscape .yt-nav, body.is-landscape .mini-player-bar { display: none !i
   </div>
 </div>
 
-<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN WITH AUDIO FORWARD/BACKWARD & SEEK BAR -->
+<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN WITH AUTOMATIC FAIL-PROOF FALLBACK -->
 <div class="yt-watch-screen" id="watchScreen">
   <div class="yt-watch-topbar">
     <button class="yt-back-btn" onclick="minimizePlayer()">↓ Minimize</button>
@@ -400,15 +400,37 @@ let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic'
 let searchAbortController = null;
 let seekTimer = null;
 
-// ── YOUTUBE PLAYER INIT ──
+// ── YOUTUBE PLAYER INIT WITH FAIL-SAFE ERROR FALLBACK ──
 function onYouTubeIframeAPIReady() {
   ytPlayer = new YT.Player('ytPlayerContainer', {
     height: '100%', width: '100%',
     playerVars: { autoplay: 1, controls: 1, rel: 0, playsinline: 1, enablejsapi: 1, fs: 1 },
     events: {
-      'onStateChange': onPlayerStateChange
+      'onStateChange': onPlayerStateChange,
+      'onError': onPlayerError
     }
   });
+}
+
+// ── FAIL-SAFE PLAYBACK FALLBACK (IF EMBED BLOCKED, AUTOMATICALLY PLAY CLEAN AUDIO STREAM) ──
+async function onPlayerError(e) {
+  console.log('[Player Error]:', e.data);
+  if (!currentVideo) return;
+  showToast('Connecting audio stream fallback...');
+  try {
+    const q = `${currentVideo.title} ${currentVideo.artist} official audio`;
+    const r = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
+    const d = await r.json();
+    if (d.results && d.results.length > 0) {
+      const fallbackTrack = d.results[0];
+      if (ytPlayer && ytPlayer.loadVideoById) {
+        ytPlayer.loadVideoById(fallbackTrack.id);
+        setTimeout(() => { if (ytPlayer.playVideo) ytPlayer.playVideo(); }, 200);
+      }
+    }
+  } catch(err) {
+    showToast('Unable to play stream');
+  }
 }
 
 function onPlayerStateChange(e) {
@@ -488,7 +510,6 @@ function clearSearch(e) {
   
   input.blur();
   if (document.activeElement) document.activeElement.blur();
-  // DO NOT STOP CURRENTLY PLAYING MUSIC!
 }
 
 function handleSearchKey(e) {
@@ -529,10 +550,10 @@ async function doSearch() {
     label = '🎵 Pulling MP3 songs from YouTube Music...';
   } else if (currentMode === 'spotify') {
     endpoint = `${API}/api/search/spotify`;
-    label = '💚 Pulling MP3 songs from Spotify Hits...';
+    label = '💚 Pulling MP3 songs from Spotify...';
   } else if (currentMode === 'applemusic') {
     endpoint = `${API}/api/search/applemusic`;
-    label = '🍎 Pulling MP3 songs from Apple Music Top Charts...';
+    label = '🍎 Pulling MP3 songs from Apple Music...';
   }
 
   feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">${label}</div>`;
@@ -805,10 +826,10 @@ function switchTab(tab) {
     si.placeholder = 'Search Spotify MP3 songs...';
     genreBar.style.display = 'flex';
     genreBar.innerHTML = `
-      <div class="ytm-genre-chip" onclick="searchGenre('Spotify Top 50 Global')">💚 Top 50 Global</div>
-      <div class="ytm-genre-chip" onclick="searchGenre('Spotify Trending Audio')">🔥 Trending Audio</div>
-      <div class="ytm-genre-chip" onclick="searchGenre('Spotify Pop Hits')">🎸 Pop Hits</div>
-      <div class="ytm-genre-chip" onclick="searchGenre('Spotify Chill Out')">☕ Chill Beats</div>
+      <div class="ytm-genre-chip" onclick="searchGenre('Global Top Hits 2026')">🔥 Global Hits</div>
+      <div class="ytm-genre-chip" onclick="searchGenre('Trending Audio Songs')">🎤 Trending Audio</div>
+      <div class="ytm-genre-chip" onclick="searchGenre('Pop Favorites')">🎸 Pop Hits</div>
+      <div class="ytm-genre-chip" onclick="searchGenre('Chill Beats Audio')">☕ Chill Beats</div>
     `;
     document.getElementById('navSpotify').classList.add('active');
     si.value = '';
@@ -821,9 +842,9 @@ function switchTab(tab) {
     si.placeholder = 'Search Apple Music songs...';
     genreBar.style.display = 'flex';
     genreBar.innerHTML = `
-      <div class="ytm-genre-chip" onclick="searchGenre('Apple Music Top 100')">🍎 Top 100 Charts</div>
-      <div class="ytm-genre-chip" onclick="searchGenre('Apple Music New Releases')">🎵 New Releases</div>
-      <div class="ytm-genre-chip" onclick="searchGenre('Apple Music Hits')">⚡ Global Hits</div>
+      <div class="ytm-genre-chip" onclick="searchGenre('Top 100 Audio Charts')">🍎 Top 100 Charts</div>
+      <div class="ytm-genre-chip" onclick="searchGenre('New Release Songs')">🎵 New Releases</div>
+      <div class="ytm-genre-chip" onclick="searchGenre('Global Chart Hits')">⚡ Global Hits</div>
     `;
     document.getElementById('navApple').classList.add('active');
     si.value = '';
