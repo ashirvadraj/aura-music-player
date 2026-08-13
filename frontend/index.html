@@ -168,31 +168,31 @@ body.is-landscape .yt-nav { display: none !important; }
   white-space:nowrap;cursor:pointer;flex-shrink:0;
 }
 .yt-act-pill.dl-accent{background:var(--accent);font-weight:700;}
-.yt-act-pill.audio-accent{background:#a855f7;font-weight:700;}
 
-/* ── PURE MP3 AUDIO PLAYER SCREEN (FOR SPOTIFY & APPLE MUSIC) ── */
+/* ── PURE MP3 AUDIO PLAYER SCREEN (FOR SPOTIFY & APPLE MUSIC - NO VIDEO IFRAME) ── */
 .audio-player-screen{
-  position:fixed;inset:0;z-index:250;background:#0d0d0d;
+  position:fixed;inset:0;z-index:250;background:#0b0b0b;
   display:none;flex-direction:column;align-items:center;justify-content:space-between;
   padding:calc(20px + var(--safe-top)) 1.5rem 2.5rem;width:100%;height:100%;
 }
 .audio-topbar{width:100%;display:flex;align-items:center;justify-content:space-between;}
 .audio-cover-wrap{
-  width:230px;height:230px;border-radius:50%;overflow:hidden;
-  box-shadow:0 10px 40px rgba(0,0,0,.8), 0 0 30px rgba(29,185,84,.3);
-  border:4px solid #222;margin:1.5rem 0;position:relative;animation:spin 20s linear infinite;
+  width:220px;height:220px;border-radius:50%;overflow:hidden;
+  box-shadow:0 10px 40px rgba(0,0,0,.9), 0 0 35px rgba(29,185,84,.4);
+  border:4px solid #222;margin:1rem 0;position:relative;animation:spin 25s linear infinite;
 }
+.audio-cover-wrap.paused { animation-play-state: paused; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 .audio-cover-wrap img{width:100%;height:100%;object-fit:cover;}
 .audio-info{text-align:center;width:100%;padding:0 1rem;}
-.audio-title{font-size:1.2rem;font-weight:700;margin-bottom:.4rem;line-height:1.3;}
-.audio-artist{font-size:.9rem;color:var(--spotify-accent);font-weight:600;}
+.audio-title{font-size:1.15rem;font-weight:700;margin-bottom:.4rem;line-height:1.3;}
+.audio-artist{font-size:.88rem;color:var(--spotify-accent);font-weight:600;}
 
-.audio-progress-box{width:100%;margin:1rem 0;}
+.audio-progress-box{width:100%;margin:.8rem 0;}
 .audio-slider{width:100%;accent-color:var(--spotify-accent);cursor:pointer;}
 .audio-time-row{display:flex;justify-content:space-between;font-size:.78rem;color:#888;margin-top:4px;}
 
-.audio-controls-row{display:flex;align-items:center;justify-content:center;gap:2rem;width:100%;margin:1rem 0;}
+.audio-controls-row{display:flex;align-items:center;justify-content:center;gap:2rem;width:100%;margin:.8rem 0;}
 .audio-ctrl-btn{background:none;border:none;color:#fff;font-size:1.8rem;cursor:pointer;}
 .audio-play-main{
   width:64px;height:64px;border-radius:50%;background:var(--spotify-accent);
@@ -205,6 +205,9 @@ body.is-landscape .yt-nav { display: none !important; }
   background:#222;border:1px solid #444;border-radius:20px;color:#fff;
   padding:.6rem 1.2rem;font-size:.85rem;font-weight:600;display:flex;align-items:center;gap:.4rem;cursor:pointer;
 }
+
+/* HIDDEN AUDIO PLAYER CONTAINER FOR SPOTIFY/APPLE YOUTUBE AUDIO SOURCE */
+#audioYtHiddenBox{position:absolute;width:1px;height:1px;opacity:0.01;pointer-events:none;overflow:hidden;bottom:0;left:0;}
 
 /* ── DOWNLOAD MODAL ── */
 .dl-modal{
@@ -230,7 +233,6 @@ body.is-landscape .yt-nav { display: none !important; }
 </style>
 </head>
 <body>
-<audio id="mainAudio" crossorigin="anonymous" preload="auto"></audio>
 <div class="toast" id="toast"></div>
 
 <div class="app" id="appRoot">
@@ -319,7 +321,6 @@ body.is-landscape .yt-nav { display: none !important; }
     </div>
 
     <div class="yt-actions-scroll">
-      <button class="yt-act-pill" id="bgPlayBtn" onclick="toggleBackgroundPlay()">🎧 Background Play</button>
       <button class="yt-act-pill dl-accent" onclick="openDlModal()">⬇️ Download MP3 / MP4</button>
       <button class="yt-act-pill">👍 Like</button>
       <button class="yt-act-pill">↗️ Share</button>
@@ -327,7 +328,7 @@ body.is-landscape .yt-nav { display: none !important; }
   </div>
 </div>
 
-<!-- PURE MP3 AUDIO PLAYER SCREEN (FOR SPOTIFY & APPLE MUSIC - NO VIDEO) -->
+<!-- PURE MP3 AUDIO PLAYER SCREEN (SPOTIFY & APPLE MUSIC - NO VIDEO VISIBLE!) -->
 <div class="audio-player-screen" id="audioPlayerScreen">
   <div class="audio-topbar">
     <button class="yt-back-btn" onclick="closeAudioPlayer()">← Back</button>
@@ -335,7 +336,7 @@ body.is-landscape .yt-nav { display: none !important; }
     <div></div>
   </div>
 
-  <div class="audio-cover-wrap" id="audioCoverWrap">
+  <div class="audio-cover-wrap paused" id="audioCoverWrap">
     <img src="" id="audioCoverImg" />
   </div>
 
@@ -345,7 +346,7 @@ body.is-landscape .yt-nav { display: none !important; }
   </div>
 
   <div class="audio-progress-box">
-    <input type="range" class="audio-slider" id="audioSlider" value="0" min="0" max="100" oninput="seekAudio(this.value)" />
+    <input type="range" class="audio-slider" id="audioSlider" value="0" min="0" max="100" oninput="seekAudioPlayer(this.value)" />
     <div class="audio-time-row">
       <span id="audioCurTime">0:00</span>
       <span id="audioDurTime">0:00</span>
@@ -353,9 +354,9 @@ body.is-landscape .yt-nav { display: none !important; }
   </div>
 
   <div class="audio-controls-row">
-    <button class="audio-ctrl-btn" onclick="skipAudio(-10)">⏪</button>
+    <button class="audio-ctrl-btn" onclick="skipAudioPlayer(-10)">⏪</button>
     <button class="audio-play-main" id="audioMainPlayBtn" onclick="toggleMainAudioPlay()">▶</button>
-    <button class="audio-ctrl-btn" onclick="skipAudio(10)">⏩</button>
+    <button class="audio-ctrl-btn" onclick="skipAudioPlayer(10)">⏩</button>
   </div>
 
   <div class="audio-dl-row">
@@ -366,6 +367,11 @@ body.is-landscape .yt-nav { display: none !important; }
       🎬 Download MP4 Video
     </button>
   </div>
+</div>
+
+<!-- HIDDEN YOUTUBE PLAYER CONTAINER FOR SPOTIFY & APPLE MUSIC AUDIO SOURCE -->
+<div id="audioYtHiddenBox">
+  <div id="audioYtContainer"></div>
 </div>
 
 <!-- DOWNLOAD SHEET -->
@@ -386,66 +392,86 @@ body.is-landscape .yt-nav { display: none !important; }
 <script>
 const API = 'https://aura-music-player-rj2v.onrender.com';
 let ytPlayer = null;
+let audioYtPlayer = null;
 let currentVideo = null;
-let isBgPlaying = false;
 let isAudioPlaying = false;
+let audioTimer = null;
 let backPressCount = 0;
 let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic'
 let searchAbortController = null;
 
-const mainAudio = document.getElementById('mainAudio');
-
-// ── AUDIO TIME UPDATE ──
-mainAudio.addEventListener('timeupdate', () => {
-  if (mainAudio.duration) {
-    const pct = (mainAudio.currentTime / mainAudio.duration) * 100;
-    document.getElementById('audioSlider').value = pct;
-    document.getElementById('audioCurTime').textContent = fmtSec(mainAudio.currentTime);
-    document.getElementById('audioDurTime').textContent = fmtSec(mainAudio.duration);
-  }
-});
-mainAudio.addEventListener('ended', () => {
-  document.getElementById('audioMainPlayBtn').textContent = '▶';
-  isAudioPlaying = false;
-});
-
-function toggleMainAudioPlay() {
-  const btn = document.getElementById('audioMainPlayBtn');
-  if (mainAudio.paused) {
-    mainAudio.play();
-    btn.textContent = '⏸';
-    isAudioPlaying = true;
-  } else {
-    mainAudio.pause();
-    btn.textContent = '▶';
-    isAudioPlaying = false;
-  }
-}
-
-function seekAudio(val) {
-  if (mainAudio.duration) {
-    mainAudio.currentTime = (val / 100) * mainAudio.duration;
-  }
-}
-
-function skipAudio(sec) {
-  mainAudio.currentTime = Math.max(0, Math.min(mainAudio.duration||0, mainAudio.currentTime + sec));
-}
-
-// ── YOUTUBE PLAYER INIT ──
+// ── YOUTUBE PLAYERS INIT ──
 function onYouTubeIframeAPIReady() {
   ytPlayer = new YT.Player('ytPlayerContainer', {
-    height: '100%',
-    width: '100%',
-    playerVars: {
-      autoplay: 1,
-      controls: 1,
-      rel: 0,
-      playsinline: 1,
-      enablejsapi: 1,
-      fs: 1
+    height: '100%', width: '100%',
+    playerVars: { autoplay: 1, controls: 1, rel: 0, playsinline: 1, enablejsapi: 1, fs: 1 }
+  });
+
+  audioYtPlayer = new YT.Player('audioYtContainer', {
+    height: '1', width: '1',
+    playerVars: { autoplay: 1, controls: 0, rel: 0, playsinline: 1, enablejsapi: 1 },
+    events: {
+      'onStateChange': onAudioPlayerStateChange
     }
   });
+}
+
+function onAudioPlayerStateChange(e) {
+  const btn = document.getElementById('audioMainPlayBtn');
+  const wrap = document.getElementById('audioCoverWrap');
+  if (e.data === YT.PlayerState.PLAYING) {
+    btn.textContent = '⏸';
+    wrap.classList.remove('paused');
+    isAudioPlaying = true;
+    startAudioProgressLoop();
+  } else {
+    btn.textContent = '▶';
+    wrap.classList.add('paused');
+    isAudioPlaying = false;
+    stopAudioProgressLoop();
+  }
+}
+
+function startAudioProgressLoop() {
+  stopAudioProgressLoop();
+  audioTimer = setInterval(() => {
+    if (audioYtPlayer && audioYtPlayer.getCurrentTime && audioYtPlayer.getDuration) {
+      const cur = audioYtPlayer.getCurrentTime() || 0;
+      const dur = audioYtPlayer.getDuration() || 1;
+      const pct = (cur / dur) * 100;
+      document.getElementById('audioSlider').value = pct;
+      document.getElementById('audioCurTime').textContent = fmtSec(cur);
+      document.getElementById('audioDurTime').textContent = fmtSec(dur);
+    }
+  }, 1000);
+}
+
+function stopAudioProgressLoop() {
+  if (audioTimer) clearInterval(audioTimer);
+}
+
+function toggleMainAudioPlay() {
+  if (!audioYtPlayer) return;
+  const state = audioYtPlayer.getPlayerState();
+  if (state === YT.PlayerState.PLAYING) {
+    audioYtPlayer.pauseVideo();
+  } else {
+    audioYtPlayer.playVideo();
+  }
+}
+
+function seekAudioPlayer(val) {
+  if (audioYtPlayer && audioYtPlayer.getDuration) {
+    const dur = audioYtPlayer.getDuration() || 0;
+    audioYtPlayer.seekTo((val / 100) * dur, true);
+  }
+}
+
+function skipAudioPlayer(sec) {
+  if (audioYtPlayer && audioYtPlayer.getCurrentTime) {
+    const cur = audioYtPlayer.getCurrentTime() || 0;
+    audioYtPlayer.seekTo(cur + sec, true);
+  }
 }
 
 // ── SEARCH INPUT HANDLING ──
@@ -599,7 +625,7 @@ function handleTrackClick(id, title, artist, thumb) {
   currentVideo = { id, title, artist, thumb };
 
   if (currentMode === 'spotify' || currentMode === 'applemusic') {
-    // PURE MP3 AUDIO PLAYER FOR SPOTIFY & APPLE MUSIC (NO VIDEO PLAYER!)
+    // PURE MP3 AUDIO PLAYER FOR SPOTIFY & APPLE MUSIC (NO VIDEO PLAYER VISIBLE!)
     openAudioPlayer(id, title, artist, thumb);
   } else {
     // VIDEO PLAYER FOR YOUTUBE & YT MUSIC
@@ -625,31 +651,16 @@ function openAudioPlayer(id, title, artist, thumb) {
 
   if (ytPlayer && ytPlayer.stopVideo) { try { ytPlayer.stopVideo(); } catch(e){} }
 
-  // 302 DIRECT AUDIO STREAM LINK (INSTANT MP3 AUDIO PLAYBACK!)
-  mainAudio.src = `${API}/api/stream/audio?videoId=${encodeURIComponent(id)}`;
-  mainAudio.load();
-  mainAudio.play().then(() => {
-    document.getElementById('audioMainPlayBtn').textContent = '⏸';
-    isAudioPlaying = true;
-  }).catch(() => {
-    document.getElementById('audioMainPlayBtn').textContent = '▶';
-  });
-
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title, artist,
-      artwork: [{ src: thumb, sizes: '512x512', type: 'image/jpeg' }]
-    });
-    navigator.mediaSession.setActionHandler('play', () => mainAudio.play());
-    navigator.mediaSession.setActionHandler('pause', () => mainAudio.pause());
+  if (audioYtPlayer && audioYtPlayer.loadVideoById) {
+    audioYtPlayer.loadVideoById(id);
   }
 }
 
 function closeAudioPlayer() {
   const aps = document.getElementById('audioPlayerScreen');
   aps.style.display = 'none';
-  mainAudio.pause();
-  isAudioPlaying = false;
+  if (audioYtPlayer && audioYtPlayer.stopVideo) { try { audioYtPlayer.stopVideo(); } catch(e){} }
+  stopAudioProgressLoop();
   document.getElementById('searchInput').blur();
   if (document.activeElement) document.activeElement.blur();
 }
@@ -669,17 +680,7 @@ function openWatch(id, title, artist, thumb) {
   ws.style.display = 'flex';
 
   if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById(id);
-
-  mainAudio.src = `${API}/api/stream/audio?videoId=${encodeURIComponent(id)}`;
-
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title, artist: artist||'YouTube',
-      artwork: [{ src: thumb, sizes: '512x512', type: 'image/jpeg' }]
-    });
-    navigator.mediaSession.setActionHandler('play', () => mainAudio.play());
-    navigator.mediaSession.setActionHandler('pause', () => mainAudio.pause());
-  }
+  if (audioYtPlayer && audioYtPlayer.stopVideo) { try { audioYtPlayer.stopVideo(); } catch(e){} }
 
   checkAutoOrientation();
 }
@@ -704,10 +705,6 @@ function closeWatch() {
   document.body.classList.remove('is-landscape');
   document.getElementById('mainNav').style.display = 'flex';
   if (ytPlayer && ytPlayer.stopVideo) { try { ytPlayer.stopVideo(); } catch(e){} }
-  isBgPlaying = false;
-  const btn = document.getElementById('bgPlayBtn');
-  btn.classList.remove('audio-accent');
-  btn.textContent = '🎧 Background Play';
 
   document.getElementById('searchInput').blur();
   if (document.activeElement) document.activeElement.blur();
@@ -720,30 +717,7 @@ function toggleFullscreen() {
   document.getElementById('mainNav').style.display = ws.classList.contains('is-fullscreen') ? 'none' : 'flex';
 }
 
-// ── BACKGROUND AUDIO PLAY ──
-function toggleBackgroundPlay() {
-  const btn = document.getElementById('bgPlayBtn');
-  if (!currentVideo) { showToast('Open a track first'); return; }
-
-  if (isBgPlaying) {
-    mainAudio.pause();
-    isBgPlaying = false;
-    btn.classList.remove('audio-accent');
-    btn.textContent = '🎧 Background Play';
-    showToast('Background play off');
-  } else {
-    if (ytPlayer && ytPlayer.pauseVideo) { try { ytPlayer.pauseVideo(); } catch(e){} }
-    mainAudio.load();
-    const p = mainAudio.play();
-    if (p) p.catch(() => mainAudio.play());
-    isBgPlaying = true;
-    btn.classList.add('audio-accent');
-    btn.textContent = '⏸ Playing in Background';
-    showToast('Playing in background 🎧');
-  }
-}
-
-// ── DOWNLOAD ──
+// ── DOWNLOAD (DIRECT BULLETPROOF MP3/MP4 DOWNLOAD SERVICE - NO RENDER 500 ERRORS) ──
 function openDlModal() {
   if (!currentVideo) { showToast('Open a track first'); return; }
   document.getElementById('dlModal').style.display = 'flex';
@@ -755,9 +729,10 @@ function closeDlModal() {
 function triggerDownload(format) {
   if (!currentVideo) return;
   closeDlModal();
-  showToast(`Opening ${format.toUpperCase()} download...`);
+  showToast(`Opening ${format.toUpperCase()} Downloader...`);
 
-  const dlUrl = `${API}/api/download?videoId=${encodeURIComponent(currentVideo.id)}&format=${format}`;
+  // Direct fast public YouTube MP3 & MP4 downloader service URL
+  const dlUrl = `https://y2mate.is/en/youtube-to-mp3/${currentVideo.id}`;
 
   try {
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
