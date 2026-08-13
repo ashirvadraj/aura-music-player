@@ -349,10 +349,12 @@ function clearSearch(e) {
     try { searchAbortController.abort(); } catch(err){}
   }
 
+  // Dismiss keyboard & un-focus input completely!
+  input.blur();
+  if (document.activeElement) document.activeElement.blur();
+
   const feed = document.getElementById('videoFeed');
   feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">Type any song or video name to search</div>`;
-  
-  setTimeout(() => input.focus(), 50);
 }
 
 function handleSearchKey(e) {
@@ -503,6 +505,10 @@ function closeWatch() {
   const btn = document.getElementById('bgPlayBtn');
   btn.classList.remove('audio-accent');
   btn.textContent = '🎧 Background Play';
+
+  // Ensure keyboard and search bar are un-focused when returning from watch screen!
+  document.getElementById('searchInput').blur();
+  if (document.activeElement) document.activeElement.blur();
 }
 
 function toggleFullscreen() {
@@ -604,7 +610,7 @@ function switchTab(tab) {
     si.placeholder = 'Search YouTube Music songs...';
     genreBar.style.display = 'flex';
     document.getElementById('navMusic').classList.add('active');
-    // CLEAN 100% EMPTY SEARCH (REMOVED DEFAULT BOLLYWOOD SUGGESTION!)
+    // CLEAN 100% EMPTY SEARCH (NO DEFAULT BOLLYWOOD SEARCH!)
     si.value = '';
     toggleClearBtn();
     feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">🎵 Search any song from YouTube Music or tap a category above</div>`;
@@ -638,6 +644,7 @@ function handleHardwareBack() {
   }
   if (ws.style.display === 'flex') { closeWatch(); return true; }
 
+  // If search input has text (e.g. "tere"), pressing Back clears search first!
   if (si.value.length > 0) {
     clearSearch();
     return true;
