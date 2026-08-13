@@ -55,7 +55,6 @@ input, textarea, [contenteditable="true"] {
 }
 .yt-logo-icon::after{content:none !important;display:none !important;}
 
-
 .yt-hdr-actions{display:flex;align-items:center;gap:1.2rem;}
 .yt-hdr-icon{font-size:1.2rem;cursor:pointer;color:var(--text);background:none;border:none;display:flex;align-items:center;gap:4px;}
 .love-badge-count{background:#ff2d55;color:#fff;font-size:.7rem;font-weight:700;padding:2px 6px;border-radius:10px;}
@@ -219,21 +218,6 @@ input, textarea, [contenteditable="true"] {
   width:100%!important;height:100%!important;border:none!important;
 }
 
-/* NON-BLOCKING FLOATING TOP-LEFT ZOOM CHIP (POSITIONED ON TOP-LEFT SO TOP-RIGHT CC & SETTING GEAR ICON ARE 100% UNCOVERED) */
-.player-zoom-chip-bar {
-  position: absolute; top: max(8px, env(safe-area-inset-top)); left: 10px;
-  z-index: 999999999 !important; display: flex; align-items: center; gap: .5rem;
-  pointer-events: none;
-}
-.player-zoom-chip {
-  pointer-events: auto !important;
-  background: rgba(0,0,0,.75); backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,.25); border-radius: 16px;
-  color: #fff; padding: .3rem .7rem; font-size: .75rem; font-weight: 700;
-  cursor: pointer; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.6);
-}
-.player-zoom-chip:active { background: #ff0000; }
-
 /* ── AUDIO SEEK SLIDER (SHOWS ONLY IN SPOTIFY/APPLE MUSIC AUDIO MODES) ── */
 .yt-red-slider-container {
   width: 100%; padding: 8px 1rem 4px; background: #121212;
@@ -366,7 +350,7 @@ body.audio-mode .music-controls-panel { display: flex !important; }
 <body>
 <div class="toast" id="toast"></div>
 
-<!-- REAL HTML5 AUDIO STREAM TO ENGAGE ANDROID OS MEDIA ENGINE FOR SYSTEM NOTIFICATION DRAWER MEDIA CARD -->
+<!-- REAL HTML5 AUDIO STREAM FOR BACKGROUND PLAYBACK -->
 <audio id="bgAudioKeeper" loop crossorigin="anonymous"></audio>
 
 <div class="app" id="appRoot">
@@ -469,6 +453,7 @@ body.audio-mode .music-controls-panel { display: flex !important; }
     <div id="zoomWrapper" class="zoom-wrapper">
       <div id="ytPlayerContainer"></div>
     </div>
+    <!-- TRANSPARENT PINCH OVERLAY LAYER THAT INTERCEPTS 2-FINGER TOUCHES -->
     <div id="pinchOverlay" style="position:absolute;inset:0;z-index:99;pointer-events:none;"></div>
 
     <div class="music-album-overlay" id="musicAlbumOverlay">
@@ -546,7 +531,6 @@ let suggestDebounceTimer = null;
 let seekTimer = null;
 let isUserPaused = false;
 let zoomScale = 1.0;
-let audioCtx = null;
 
 // CLIENT SIDE SEARCH CACHE (INSTANT 0ms RESPONSES)
 const clientSearchCache = new Map();
@@ -640,8 +624,14 @@ function hideSuggestions() {
 function setupMediaSession() {
   if (!currentVideo) return;
 
-  // DYNAMICALLY UPDATE NATIVE ANDROID NOTIFICATION CARD TITLE & ARTIST!
-  if (window.AndroidNative && window.AndroidNative.updateNotification) {
+  const streamUrl = `${API}/api/stream/audio?videoId=${currentVideo.id}`;
+
+  // TRIGGER NATIVE ANDROID MEDIAPLAYER IN FOREGROUND SERVICE (GUARANTEES 100% NON-STOP AUDIO ON POWER LOCK & APP SWITCHING!)
+  if (window.AndroidNative && window.AndroidNative.playNativeAudio) {
+    try {
+      window.AndroidNative.playNativeAudio(streamUrl, currentVideo.title || 'Aura Track', currentVideo.artist || 'Aura Music Player');
+    } catch(e){}
+  } else if (window.AndroidNative && window.AndroidNative.updateNotification) {
     try {
       window.AndroidNative.updateNotification(currentVideo.title || 'Aura Track', currentVideo.artist || 'Aura Music Player');
     } catch(e){}
@@ -715,36 +705,6 @@ function startBgAudioKeeper() {
     }
   } catch(e){}
 }
-
-document.addEventListener('visibilitychange', () => {
-  const bgAudio = document.getElementById('bgAudioKeeper');
-  if (document.hidden) {
-    if (currentVideo && !isUserPaused) {
-      console.log('[Screen Lock / App Switch]: Activating HTML5 Pure Audio Stream!');
-      if (bgAudio) {
-        const streamUrl = `${API}/api/stream/audio?videoId=${currentVideo.id}`;
-        if (!bgAudio.src || !bgAudio.src.includes(currentVideo.id)) {
-          bgAudio.src = streamUrl;
-        }
-        if (ytPlayer && ytPlayer.getCurrentTime) {
-          try { bgAudio.currentTime = ytPlayer.getCurrentTime() || 0; } catch(e){}
-        }
-        bgAudio.play().catch(e => {});
-      }
-    }
-  } else {
-    if (currentVideo && !isUserPaused) {
-      if (bgAudio && !bgAudio.paused) {
-        const curTime = bgAudio.currentTime || 0;
-        if (ytPlayer && ytPlayer.seekTo) {
-          ytPlayer.seekTo(curTime, true);
-          ytPlayer.playVideo();
-        }
-        bgAudio.pause();
-      }
-    }
-  }
-});
 
 // CONTINUOUS BACKGROUND HEARTBEAT TO ENSURE AUDIO STAYS PLAYING
 setInterval(() => {
@@ -1045,9 +1005,13 @@ function togglePlayPause() {
   if (state === YT.PlayerState.PLAYING) {
     isUserPaused = true;
     ytPlayer.pauseVideo();
+    if (window.AndroidNative && window.AndroidNative.stopNativeAudio) {
+      window.AndroidNative.stopNativeAudio();
+    }
   } else {
     isUserPaused = false;
     ytPlayer.playVideo();
+    setupMediaSession();
   }
 }
 
@@ -1435,6 +1399,9 @@ function closeWatch() {
   isUserPaused = true;
   if (ytPlayer && ytPlayer.stopVideo) { try { ytPlayer.stopVideo(); } catch(e){} }
   stopSeekTimer();
+  if (window.AndroidNative && window.AndroidNative.stopNativeAudio) {
+    window.AndroidNative.stopNativeAudio();
+  }
 
   document.getElementById('searchInput').blur();
 }
