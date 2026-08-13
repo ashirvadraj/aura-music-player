@@ -460,7 +460,6 @@ body.audio-mode .music-controls-panel { display: flex !important; }
     <button class="yt-back-btn" onclick="handleBackFromWatch()">← Back</button>
     <div style="font-weight:700;font-size:.9rem;" id="nowPlayingText">Now Playing</div>
     <div style="display:flex;gap:.6rem;align-items:center;">
-      <button class="yt-back-btn" onclick="cycleZoomLevel(event)" title="Zoom Screen" style="font-size:.82rem;font-weight:700;background:rgba(255,255,255,.15);border-radius:12px;padding:3px 8px;margin-right:4px;">🔎 <span class="hdr-zoom-lbl">100%</span></button>
       <button class="yt-back-btn" id="watchLoveBtn" onclick="toggleCurrentLove()" title="Love Song" style="font-size:1.2rem;">♡</button>
       <button class="yt-back-btn" onclick="toggleFullscreen()" title="Fullscreen" style="font-size:1.3rem;">⛶</button>
     </div>
@@ -469,11 +468,6 @@ body.audio-mode .music-controls-panel { display: flex !important; }
   <div class="yt-player-box" id="playerBox">
     <div id="zoomWrapper" class="zoom-wrapper">
       <div id="ytPlayerContainer"></div>
-    </div>
-
-    <!-- NON-BLOCKING FLOATING TOP-LEFT ZOOM CHIP (POSITIONED ON TOP-LEFT SO TOP-RIGHT CC & SETTING GEAR ICON ARE 100% UNCOVERED) -->
-    <div class="player-zoom-chip-bar">
-      <button class="player-zoom-chip" onclick="cycleZoomLevel(event)">🔎 Zoom: <span id="playerZoomLabel">100%</span></button>
     </div>
 
     <div class="music-album-overlay" id="musicAlbumOverlay">
@@ -518,7 +512,6 @@ body.audio-mode .music-controls-panel { display: flex !important; }
     </div>
 
     <div class="yt-actions-scroll">
-      <button class="yt-act-pill" onclick="cycleZoomLevel(event)">🔎 Zoom: <span class="pill-zoom-lbl">100%</span></button>
       <button class="yt-act-pill love-pill-btn" id="watchLovePill" onclick="toggleCurrentLove()">❤️ Love Song</button>
       <button class="yt-act-pill dl-accent" onclick="openDlModal()">⬇️ Download MP3 Song</button>
       <button class="yt-act-pill">↗️ Share</button>
@@ -880,34 +873,58 @@ function updateCurrentLoveUI() {
   }
 }
 
-// ── SCREEN ZOOM SYSTEM FOR YOUTUBE PLAYER (TOP-LEFT CHIP, 100% UNCOVERED CC & GEAR ICON) ──
+// ── 2-FINGER PINCH-TO-ZOOM SYSTEM FOR YOUTUBE VIDEO PLAYER ──
+let initialPinchDist = 0;
+let baseScale = 1.0;
+
 function applyZoom(scaleVal) {
   zoomScale = Math.min(Math.max(scaleVal, 1.0), 3.0);
   const wrapper = document.getElementById('zoomWrapper');
   if (wrapper) {
     wrapper.style.transform = `scale(${zoomScale})`;
   }
-  const pct = Math.round(zoomScale * 100);
-  const lbl = document.getElementById('playerZoomLabel');
-  if (lbl) lbl.textContent = `${pct}%`;
-
-  document.querySelectorAll('.hdr-zoom-lbl, .pill-zoom-lbl').forEach(el => {
-    el.textContent = `${pct}%`;
-  });
-  showToast(`Screen Zoom: ${pct}%`);
 }
 
-function cycleZoomLevel(e) {
-  if (e) e.stopPropagation();
-  if (zoomScale < 1.15) applyZoom(1.25);
-  else if (zoomScale < 1.4) applyZoom(1.50);
-  else if (zoomScale < 1.8) applyZoom(2.00);
-  else applyZoom(1.0);
+function initPinchToZoom() {
+  const box = document.getElementById('playerBox');
+  if (!box) return;
+
+  box.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      initialPinchDist = getTouchDistance(e.touches[0], e.touches[1]);
+      baseScale = zoomScale;
+    }
+  }, { passive: false });
+
+  box.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const currentDist = getTouchDistance(e.touches[0], e.touches[1]);
+      if (initialPinchDist > 0) {
+        const factor = currentDist / initialPinchDist;
+        applyZoom(baseScale * factor);
+      }
+    }
+  }, { passive: false });
+
+  box.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) {
+      initialPinchDist = 0;
+    }
+  });
+}
+
+function getTouchDistance(t1, t2) {
+  const dx = t1.clientX - t2.clientX;
+  const dy = t1.clientY - t2.clientY;
+  return Math.hypot(dx, dy);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   loadLovedSongs();
   checkResumeBanner();
+  initPinchToZoom();
 });
 
 // ── YOUTUBE PLAYER INIT WITH 100% ORIGINAL YOUTUBE CONTROLS ──
