@@ -128,7 +128,7 @@ input, textarea, [contenteditable="true"] {
 
 body.is-landscape .yt-nav { display: none !important; }
 
-/* ── WATCH SCREEN (FOR YOUTUBE VIDEOS) ── */
+/* ── GUARANTEED WORKING PLAYER & WATCH SCREEN ── */
 .yt-watch-screen{
   position:fixed;inset:0;z-index:200;background:var(--bg);
   display:none;flex-direction:column;width:100%;height:100%;overflow-y:auto;
@@ -146,12 +146,26 @@ body.is-landscape .yt-nav { display: none !important; }
 }
 .yt-back-btn{background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;padding:.2rem .5rem;}
 
-.yt-player-box{width:100%;aspect-ratio:16/9;background:#000;position:sticky;top:0;z-index:10;overflow:hidden;}
+.yt-player-box{width:100%;aspect-ratio:16/9;background:#000;position:relative;z-index:10;overflow:hidden;}
 .yt-watch-screen.is-fullscreen .yt-player-box{
   position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;
   z-index:99999!important;aspect-ratio:unset!important;margin:0!important;padding:0!important;
 }
 #ytPlayerContainer{width:100%;height:100%;border:none;}
+
+/* SPOTIFY / APPLE MUSIC ALBUM ART OVERLAY OVER PLAYER BOX */
+.music-album-overlay{
+  position:absolute;inset:0;background:#0b0b0b;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  z-index:15;pointer-events:auto;
+}
+.music-album-disc{
+  width:180px;height:180px;border-radius:50%;overflow:hidden;
+  border:4px solid #222;box-shadow:0 8px 30px rgba(0,0,0,.9), 0 0 25px rgba(29,185,84,.4);
+  animation:spin 25s linear infinite;
+}
+.music-album-disc img{width:100%;height:100%;object-fit:cover;}
+@keyframes spin { 100% { transform: rotate(360deg); } }
 
 .yt-watch-info{padding:1rem;}
 .yt-watch-title{font-size:1.05rem;font-weight:700;line-height:1.4;}
@@ -168,50 +182,8 @@ body.is-landscape .yt-nav { display: none !important; }
   white-space:nowrap;cursor:pointer;flex-shrink:0;
 }
 .yt-act-pill.dl-accent{background:var(--accent);font-weight:700;}
-
-/* ── PURE MP3 MUSIC PLAYER SCREEN (SPOTIFY & APPLE MUSIC - NO VIDEO BOX!) ── */
-.pure-music-screen{
-  position:fixed;inset:0;z-index:250;background:#070707;
-  display:none;flex-direction:column;align-items:center;justify-content:space-between;
-  padding:calc(20px + var(--safe-top)) 1.5rem 2.5rem;width:100%;height:100%;
-}
-.music-topbar{width:100%;display:flex;align-items:center;justify-content:space-between;}
-.music-cover-card{
-  width:240px;height:240px;border-radius:50%;overflow:hidden;
-  box-shadow:0 12px 45px rgba(0,0,0,.9), 0 0 35px rgba(29,185,84,.4);
-  border:5px solid #1a1a1a;margin:1rem 0;position:relative;animation:spin 25s linear infinite;
-}
-.music-cover-card.paused { animation-play-state: paused; }
-@keyframes spin { 100% { transform: rotate(360deg); } }
-.music-cover-card img{width:100%;height:100%;object-fit:cover;}
-
-.music-info-box{text-align:center;width:100%;padding:0 1rem;}
-.music-title-text{font-size:1.15rem;font-weight:700;margin-bottom:.4rem;line-height:1.3;}
-.music-artist-text{font-size:.88rem;color:var(--spotify-accent);font-weight:600;}
-
-.music-progress-box{width:100%;margin:.8rem 0;}
-.music-slider{width:100%;accent-color:var(--spotify-accent);cursor:pointer;}
-.music-time-row{display:flex;justify-content:space-between;font-size:.78rem;color:#888;margin-top:4px;}
-
-.music-controls-row{display:flex;align-items:center;justify-content:center;gap:2rem;width:100%;margin:.8rem 0;}
-.music-ctrl-btn{background:none;border:none;color:#fff;font-size:1.8rem;cursor:pointer;}
-.music-play-btn{
-  width:64px;height:64px;border-radius:50%;background:var(--spotify-accent);
-  color:#000;display:flex;align-items:center;justify-content:center;font-size:2rem;
-  border:none;cursor:pointer;box-shadow:0 4px 15px rgba(29,185,84,.5);
-}
-
-.music-dl-row{display:flex;gap:.8rem;width:100%;justify-content:center;}
-.music-dl-btn{
-  background:#1e1e1e;border:1px solid #383838;border-radius:20px;color:#fff;
-  padding:.65rem 1.4rem;font-size:.88rem;font-weight:700;display:flex;align-items:center;gap:.4rem;cursor:pointer;
-}
-
-/* REAL ACTIVE YOUTUBE PLAYER CONTAINER (OVERLAID INSIDE COVER CARD SO AUDIO PLAYS 100% RELIABLY) */
-.hidden-yt-audio-wrap{
-  position:absolute;width:240px;height:240px;top:0;left:0;opacity:0.001;pointer-events:none;z-index:5;
-}
-#ytAudioPlayerContainer{width:100%;height:100%;border:none;}
+.yt-act-pill.spotify-accent{background:var(--spotify-accent);color:#000;font-weight:700;}
+.yt-act-pill.applemusic-accent{background:var(--applemusic-accent);color:#fff;font-weight:700;}
 
 /* ── DOWNLOAD MODAL ── */
 .dl-modal{
@@ -295,7 +267,7 @@ body.is-landscape .yt-nav { display: none !important; }
   </div>
 </div>
 
-<!-- WATCH SCREEN (FOR YOUTUBE VIDEOS) -->
+<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN -->
 <div class="yt-watch-screen" id="watchScreen">
   <div class="yt-watch-topbar">
     <button class="yt-back-btn" onclick="handleBackFromWatch()">← Back</button>
@@ -307,69 +279,36 @@ body.is-landscape .yt-nav { display: none !important; }
 
   <div class="yt-player-box" id="playerBox">
     <div id="ytPlayerContainer"></div>
+    <div class="music-album-overlay" id="musicAlbumOverlay">
+      <div class="music-album-disc">
+        <img src="" id="musicAlbumImg" />
+      </div>
+      <div style="font-size:.85rem;font-weight:700;color:var(--spotify-accent);margin-top:10px;" id="musicOverlayBadge">
+        💚 Spotify Audio Player
+      </div>
+    </div>
   </div>
 
   <div class="yt-watch-info">
     <div class="yt-watch-title" id="wTitle">Video Title</div>
-    <div class="yt-watch-views" id="wViews">YouTube · Official Stream</div>
+    <div class="yt-watch-views" id="wViews">Audio Track · Official Stream</div>
 
     <div class="yt-channel-row">
       <div class="yt-chan-left">
-        <div class="yt-avatar" id="wAvatar">Y</div>
+        <div class="yt-avatar" id="wAvatar">S</div>
         <div>
-          <div style="font-weight:600;font-size:.9rem;" id="wChannel">Channel Name</div>
-          <div style="font-size:.75rem;color:#aaa;" id="wBadge">YouTube</div>
+          <div style="font-weight:600;font-size:.9rem;" id="wChannel">Artist Name</div>
+          <div style="font-size:.75rem;color:#aaa;" id="wBadge">Spotify MP3</div>
         </div>
       </div>
-      <button class="yt-sub-btn">Subscribe</button>
+      <button class="yt-sub-btn" id="modeToggleBtn" onclick="toggleOverlayView()">🎵 MP3 Album Art</button>
     </div>
 
     <div class="yt-actions-scroll">
-      <button class="yt-act-pill dl-accent" onclick="openDlModal()">⬇️ Download MP3 / MP4</button>
+      <button class="yt-act-pill dl-accent" onclick="openDlModal()">⬇️ Download MP3 Song</button>
       <button class="yt-act-pill">👍 Like</button>
       <button class="yt-act-pill">↗️ Share</button>
     </div>
-  </div>
-</div>
-
-<!-- PURE MP3 MUSIC PLAYER SCREEN (FOR SPOTIFY & APPLE MUSIC - NO VIDEO BOX!) -->
-<div class="pure-music-screen" id="pureMusicScreen">
-  <div class="music-topbar">
-    <button class="yt-back-btn" onclick="closePureMusicPlayer()">← Back</button>
-    <div style="font-weight:700;font-size:.9rem;color:var(--spotify-accent);" id="musicBadgeTitle">💚 Spotify MP3 Song</div>
-    <div></div>
-  </div>
-
-  <div class="music-cover-card paused" id="musicCoverCard">
-    <img src="" id="musicCoverImg" />
-    <div class="hidden-yt-audio-wrap">
-      <div id="ytAudioPlayerContainer"></div>
-    </div>
-  </div>
-
-  <div class="music-info-box">
-    <div class="music-title-text" id="musicTrackTitle">Track Title</div>
-    <div class="music-artist-text" id="musicTrackArtist">Artist Name</div>
-  </div>
-
-  <div class="music-progress-box">
-    <input type="range" class="music-slider" id="musicSlider" value="0" min="0" max="100" oninput="seekMusicPlayer(this.value)" />
-    <div class="music-time-row">
-      <span id="musicCurTime">0:00</span>
-      <span id="musicDurTime">0:00</span>
-    </div>
-  </div>
-
-  <div class="music-controls-row">
-    <button class="music-ctrl-btn" onclick="skipMusicPlayer(-10)">⏪</button>
-    <button class="music-play-btn" id="musicMainPlayBtn" onclick="togglePureMusicPlay()">▶</button>
-    <button class="music-ctrl-btn" onclick="skipMusicPlayer(10)">⏩</button>
-  </div>
-
-  <div class="music-dl-row">
-    <button class="music-dl-btn" style="background:var(--spotify-accent);color:#000;" onclick="triggerDownload('mp3')">
-      🎵 Download MP3 Song
-    </button>
   </div>
 </div>
 
@@ -391,83 +330,18 @@ body.is-landscape .yt-nav { display: none !important; }
 <script>
 const API = 'https://aura-music-player-rj2v.onrender.com';
 let ytPlayer = null;
-let ytAudioPlayer = null;
 let currentVideo = null;
-let musicTimer = null;
 let backPressCount = 0;
 let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic'
 let searchAbortController = null;
+let isOverlayShown = false;
 
-// ── YOUTUBE PLAYERS INIT ──
+// ── YOUTUBE PLAYER INIT ──
 function onYouTubeIframeAPIReady() {
   ytPlayer = new YT.Player('ytPlayerContainer', {
     height: '100%', width: '100%',
     playerVars: { autoplay: 1, controls: 1, rel: 0, playsinline: 1, enablejsapi: 1, fs: 1 }
   });
-
-  ytAudioPlayer = new YT.Player('ytAudioPlayerContainer', {
-    height: '100%', width: '100%',
-    playerVars: { autoplay: 1, controls: 0, rel: 0, playsinline: 1, enablejsapi: 1 },
-    events: {
-      'onStateChange': onAudioStateChange
-    }
-  });
-}
-
-function onAudioStateChange(e) {
-  const btn = document.getElementById('musicMainPlayBtn');
-  const card = document.getElementById('musicCoverCard');
-  if (e.data === YT.PlayerState.PLAYING) {
-    btn.textContent = '⏸';
-    card.classList.remove('paused');
-    startMusicProgressLoop();
-  } else {
-    btn.textContent = '▶';
-    card.classList.add('paused');
-    stopMusicProgressLoop();
-  }
-}
-
-function startMusicProgressLoop() {
-  stopMusicProgressLoop();
-  musicTimer = setInterval(() => {
-    if (ytAudioPlayer && ytAudioPlayer.getCurrentTime && ytAudioPlayer.getDuration) {
-      const cur = ytAudioPlayer.getCurrentTime() || 0;
-      const dur = ytAudioPlayer.getDuration() || 1;
-      const pct = (cur / dur) * 100;
-      document.getElementById('musicSlider').value = pct;
-      document.getElementById('musicCurTime').textContent = fmtSec(cur);
-      document.getElementById('musicDurTime').textContent = fmtSec(dur);
-    }
-  }, 1000);
-}
-
-function stopMusicProgressLoop() {
-  if (musicTimer) clearInterval(musicTimer);
-}
-
-function togglePureMusicPlay() {
-  if (!ytAudioPlayer) return;
-  const state = ytAudioPlayer.getPlayerState();
-  if (state === YT.PlayerState.PLAYING) {
-    ytAudioPlayer.pauseVideo();
-  } else {
-    ytAudioPlayer.playVideo();
-  }
-}
-
-function seekMusicPlayer(val) {
-  if (ytAudioPlayer && ytAudioPlayer.getDuration) {
-    const dur = ytAudioPlayer.getDuration() || 0;
-    ytAudioPlayer.seekTo((val / 100) * dur, true);
-  }
-}
-
-function skipMusicPlayer(sec) {
-  if (ytAudioPlayer && ytAudioPlayer.getCurrentTime) {
-    const cur = ytAudioPlayer.getCurrentTime() || 0;
-    ytAudioPlayer.seekTo(cur + sec, true);
-  }
 }
 
 // ── SEARCH INPUT HANDLING ──
@@ -599,7 +473,7 @@ function renderFeed(list) {
     else if (currentMode === 'ytmusic') subtext = `YouTube Music MP3 · ${item.artist}`;
 
     return `
-    <div class="yt-card" onclick="handleTrackClick('${item.id}','${escHtml(item.title)}','${escHtml(item.artist)}','${item.thumbnail}')">
+    <div class="yt-card" onclick="openWatch('${item.id}','${escHtml(item.title)}','${escHtml(item.artist)}','${item.thumbnail}')">
       <div class="yt-thumb-wrap">
         <img src="${item.thumbnail}" loading="lazy"/>
         <div class="yt-dur">${fmtSec(item.duration)}</div>
@@ -616,63 +490,39 @@ function renderFeed(list) {
   }).join('');
 }
 
-// ── TRACK CLICK DISPATCHER ──
-function handleTrackClick(id, title, artist, thumb) {
-  currentVideo = { id, title, artist, thumb };
-
-  if (currentMode === 'spotify' || currentMode === 'applemusic') {
-    // OPEN PURE SPOTIFY / APPLE MUSIC MP3 PLAYER SCREEN (NO VIDEO BOX!)
-    openPureMusicPlayer(id, title, artist, thumb);
-  } else {
-    // OPEN VIDEO PLAYER FOR YOUTUBE & YT MUSIC
-    openWatch(id, title, artist, thumb);
-  }
-}
-
-// ── PURE MP3 MUSIC PLAYER (SPOTIFY & APPLE MUSIC) ──
-function openPureMusicPlayer(id, title, artist, thumb) {
-  document.getElementById('musicTrackTitle').textContent = title;
-  document.getElementById('musicTrackArtist').textContent = artist;
-  document.getElementById('musicCoverImg').src = thumb;
-
-  const isSpotify = (currentMode === 'spotify');
-  const badgeText = isSpotify ? '💚 Spotify MP3 Song' : '🍎 Apple Music MP3 Song';
-  const accentColor = isSpotify ? 'var(--spotify-accent)' : 'var(--applemusic-accent)';
-
-  document.getElementById('musicBadgeTitle').textContent = badgeText;
-  document.getElementById('musicBadgeTitle').style.color = accentColor;
-  document.getElementById('musicTrackArtist').style.color = accentColor;
-  document.getElementById('musicMainPlayBtn').style.background = accentColor;
-
-  document.getElementById('searchInput').blur();
-  if (document.activeElement) document.activeElement.blur();
-
-  const pms = document.getElementById('pureMusicScreen');
-  pms.style.display = 'flex';
-
-  if (ytPlayer && ytPlayer.stopVideo) { try { ytPlayer.stopVideo(); } catch(e){} }
-
-  if (ytAudioPlayer && ytAudioPlayer.loadVideoById) {
-    ytAudioPlayer.loadVideoById(id);
-  }
-}
-
-function closePureMusicPlayer() {
-  const pms = document.getElementById('pureMusicScreen');
-  pms.style.display = 'none';
-  if (ytAudioPlayer && ytAudioPlayer.stopVideo) { try { ytAudioPlayer.stopVideo(); } catch(e){} }
-  stopMusicProgressLoop();
-  document.getElementById('searchInput').blur();
-  if (document.activeElement) document.activeElement.blur();
-}
-
-// ── WATCH SCREEN (VIDEO) ──
+// ── PLAY PLAYER SCREEN (GUARANTEED PLAYBACK!) ──
 function openWatch(id, title, artist, thumb) {
+  currentVideo = { id, title, artist, thumb };
   document.getElementById('wTitle').textContent = title;
   document.getElementById('wChannel').textContent = artist;
-  document.getElementById('wAvatar').textContent = (artist||'Y')[0].toUpperCase();
-  document.getElementById('wBadge').textContent = currentMode === 'ytmusic' ? 'YouTube Music' : 'YouTube';
-  document.getElementById('nowPlayingText').textContent = currentMode === 'ytmusic' ? '🎵 YouTube Music MP3' : 'Now Playing';
+  document.getElementById('wAvatar').textContent = (artist||'S')[0].toUpperCase();
+
+  const overlay = document.getElementById('musicAlbumOverlay');
+  const overlayImg = document.getElementById('musicAlbumImg');
+  const overlayBadge = document.getElementById('musicOverlayBadge');
+  overlayImg.src = thumb;
+
+  let modeBadge = 'YouTube';
+  if (currentMode === 'spotify') {
+    modeBadge = 'Spotify MP3 Audio';
+    overlay.style.display = 'flex';
+    overlayBadge.textContent = '💚 Spotify Audio Player';
+    overlayBadge.style.color = 'var(--spotify-accent)';
+    isOverlayShown = true;
+  } else if (currentMode === 'applemusic') {
+    modeBadge = 'Apple Music MP3 Audio';
+    overlay.style.display = 'flex';
+    overlayBadge.textContent = '🍎 Apple Music Audio Player';
+    overlayBadge.style.color = 'var(--applemusic-accent)';
+    isOverlayShown = true;
+  } else {
+    overlay.style.display = 'none';
+    isOverlayShown = false;
+    if (currentMode === 'ytmusic') modeBadge = 'YouTube Music MP3';
+  }
+
+  document.getElementById('wBadge').textContent = modeBadge;
+  document.getElementById('nowPlayingText').textContent = `🎵 ${modeBadge}`;
 
   document.getElementById('searchInput').blur();
   if (document.activeElement) document.activeElement.blur();
@@ -680,10 +530,20 @@ function openWatch(id, title, artist, thumb) {
   const ws = document.getElementById('watchScreen');
   ws.style.display = 'flex';
 
-  if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById(id);
-  if (ytAudioPlayer && ytAudioPlayer.stopVideo) { try { ytAudioPlayer.stopVideo(); } catch(e){} }
+  if (ytPlayer && ytPlayer.loadVideoById) {
+    ytPlayer.loadVideoById(id);
+  }
 
   checkAutoOrientation();
+}
+
+function toggleOverlayView() {
+  const overlay = document.getElementById('musicAlbumOverlay');
+  if (overlay.style.display === 'flex') {
+    overlay.style.display = 'none';
+  } else {
+    overlay.style.display = 'flex';
+  }
 }
 
 function handleBackFromWatch() {
@@ -829,13 +689,11 @@ function switchTab(tab) {
 function handleHardwareBack() {
   const dlModal = document.getElementById('dlModal');
   const ws = document.getElementById('watchScreen');
-  const pms = document.getElementById('pureMusicScreen');
   const si = document.getElementById('searchInput');
 
   document.activeElement && document.activeElement.blur();
 
   if (dlModal.style.display === 'flex') { closeDlModal(); return true; }
-  if (pms.style.display === 'flex') { closePureMusicPlayer(); return true; }
   if (ws.classList.contains('is-fullscreen')) {
     ws.classList.remove('is-fullscreen');
     document.getElementById('mainNav').style.display = 'flex';
