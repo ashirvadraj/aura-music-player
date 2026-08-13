@@ -181,49 +181,58 @@ app.get('/api/search/applemusic', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// ROUTE 2: DOWNLOAD & MP3 STREAMING (FAIL-PROOF)
+// ROUTE 2A: DIRECT AUDIO STREAM (FOR HTML5 PLAYBACK)
+// ─────────────────────────────────────────────
+app.get('/api/stream/audio', (req, res) => {
+  const { videoId } = req.query;
+  if (!videoId) return res.status(400).send('Missing videoId');
+
+  const target = `https://www.youtube.com/watch?v=${videoId}`;
+
+  execFile(YTDLP, [
+    ...YTDLP_ARGS_PREFIX,
+    target,
+    '-f', 'ba/b/best',
+    '-g',
+    '--no-check-certificates',
+    '--no-warnings',
+    '--quiet'
+  ], (err, stdout) => {
+    if (err || !stdout.trim()) {
+      return res.status(404).send('Audio stream not available');
+    }
+    const directUrl = stdout.trim().split('\n')[0];
+    res.redirect(302, directUrl);
+  });
+});
+
+// ─────────────────────────────────────────────
+// ROUTE 2B: DOWNLOAD STREAM & REDIRECT (FAIL-PROOF)
 // ─────────────────────────────────────────────
 app.get('/api/download', (req, res) => {
-  const { videoId, q, format, title } = req.query;
+  const { videoId, q, format } = req.query;
   if (!videoId && !q) return res.status(400).send('Missing parameters');
 
   const isMp4 = (format === 'mp4');
-  const ext = isMp4 ? 'mp4' : 'mp3';
-  const mime = isMp4 ? 'video/mp4' : 'audio/mpeg';
-  const sanitizeTitle = (title || videoId || 'song_audio').replace(/[/\\?%*:|"<>]/g, '_');
-  const fileName = `${sanitizeTitle}.${ext}`;
-
   const target = videoId ? `https://www.youtube.com/watch?v=${videoId}` : `ytsearch1:${q}`;
   const formatArg = isMp4 ? 'b[ext=mp4]/b/best' : 'ba/b/best';
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
-  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-  res.setHeader('Content-Type', mime);
-  res.setHeader('Cache-Control', 'no-cache');
-
-  const ytdlpArgs = [
+  execFile(YTDLP, [
     ...YTDLP_ARGS_PREFIX,
     target,
-    '--no-check-certificates',
     '-f', formatArg,
-    '-o', '-',
-    '--no-playlist',
+    '-g',
+    '--no-check-certificates',
     '--no-warnings',
     '--quiet'
-  ];
-
-  const proc = spawn(YTDLP, ytdlpArgs);
-
-  proc.stdout.pipe(res);
-
-  req.on('close', () => {
-    try { proc.kill(); } catch(e){}
-  });
-
-  proc.on('error', (err) => {
-    console.error(`[Download Error]:`, err);
-    if (!res.headersSent) res.status(500).send('Download stream temporary error');
+  ], (err, stdout) => {
+    if (err || !stdout.trim()) {
+      // Fallback: Redirect directly to y2mate/cobalt stream
+      const fallbackUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      return res.redirect(302, fallbackUrl);
+    }
+    const directMediaUrl = stdout.trim().split('\n')[0];
+    res.redirect(302, directMediaUrl);
   });
 });
 
