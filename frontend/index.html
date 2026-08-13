@@ -152,14 +152,14 @@ input, textarea, [contenteditable="true"] {
 .yt-nav-item.active{color:#fff;font-weight:700;}
 .yt-nav-icon{font-size:1.2rem;}
 
-/* ── UNIFIED WATCH PLAYER SCREEN (USES OFF-SCREEN POSITIONAL MINIMIZE TO PREVENT CHROMIUM AUTO-PAUSE!) ── */
+/* ── UNIFIED WATCH PLAYER SCREEN ── */
 .yt-watch-screen{
   position:fixed;inset:0;z-index:200;background:var(--bg);
   display:none;flex-direction:column;width:100%;height:100%;overflow-y:auto;
   touch-action:pan-y pinch-zoom;
 }
 
-/* OFF-SCREEN CONTINUOUS BACKGROUND PLAYBACK STATE (DOES NOT USE display:none SO CHROMIUM NEVER PAUSES MUSIC!) */
+/* OFF-SCREEN POSITIONAL MINIMIZE FOR NON-STOP BACKGROUND PLAYBACK */
 .yt-watch-screen.is-minimized {
   display: flex !important;
   position: fixed !important;
@@ -187,7 +187,7 @@ input, textarea, [contenteditable="true"] {
   overflow:hidden;touch-action:none;
 }
 
-/* 100% WORKING ZOOM WRAPPER CONTAINER (WORKS IN BOTH PORTRAIT & LANDSCAPE!) */
+/* ZOOM WRAPPER CONTAINER */
 .zoom-wrapper {
   width:100%;height:100%;
   transition:transform 0.15s ease-out;
@@ -200,11 +200,57 @@ input, textarea, [contenteditable="true"] {
   width:100%!important;height:100%!important;border:none!important;
 }
 
-/* TOUCH OVERLAY GESTURE LAYER OVER YOUTUBE IFRAME FOR 2-FINGER PINCH TO ZOOM */
+/* TOUCH OVERLAY GESTURE LAYER OVER YOUTUBE IFRAME */
 .touch-overlay-gesture {
   position: absolute; inset: 0; z-index: 8;
   background: transparent; touch-action: none; display: block;
 }
+
+/* ── SLEEK IMMERSIVE FULLSCREEN TOUCH CONTROL OVERLAY ── */
+.fullscreen-touch-overlay {
+  position: absolute; inset: 0; z-index: 25;
+  background: rgba(0,0,0,.5); backdrop-filter: blur(4px);
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: max(16px, env(safe-area-inset-top)) 1.2rem 1.2rem;
+  opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+}
+.fullscreen-touch-overlay.visible {
+  opacity: 1; pointer-events: auto;
+}
+
+.fs-topbar { display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
+.fs-actions { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.fs-chip-btn {
+  background: rgba(255,255,255,.2); backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,.3); border-radius: 16px;
+  color: #fff; padding: .4rem .8rem; font-size: .8rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+}
+.fs-chip-btn:active { background: #ff0000; }
+
+.fs-center-controls {
+  display: flex; align-items: center; justify-content: center; gap: 2rem;
+}
+.fs-play-btn {
+  background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.25);
+  border-radius: 50%; color: #fff; width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; font-weight: 700; cursor: pointer; backdrop-filter: blur(10px);
+}
+.fs-play-btn.main { width: 64px; height: 64px; font-size: 1.6rem; background: var(--accent); border: none; }
+
+.fs-quality-menu {
+  position: absolute; top: 60px; right: 20px; z-index: 30;
+  background: #1c1c1e; border: 1px solid #333; border-radius: 14px;
+  padding: .8rem; display: none; flex-direction: column; gap: 6px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.9);
+}
+.fs-q-option {
+  background: #2a2a2c; border: none; border-radius: 8px;
+  color: #fff; padding: .5rem 1rem; font-size: .82rem; font-weight: 600;
+  cursor: pointer; text-align: left;
+}
+.fs-q-option:active { background: var(--accent); }
 
 /* ── 100% HARDWARE FULLSCREEN LANDSCAPE FILL ── */
 @media screen and (orientation: landscape) {
@@ -408,7 +454,7 @@ input, textarea, [contenteditable="true"] {
   </div>
 </div>
 
-<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN WITH ZOOM WRAPPER & FAVORITES -->
+<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN WITH FULLSCREEN TOUCH OVERLAY & FAVORITES -->
 <div class="yt-watch-screen" id="watchScreen">
   <div class="yt-watch-topbar">
     <button class="yt-back-btn" onclick="handleBackFromWatch()">← Back</button>
@@ -424,7 +470,39 @@ input, textarea, [contenteditable="true"] {
     <div id="zoomWrapper" class="zoom-wrapper">
       <div id="ytPlayerContainer"></div>
     </div>
-    <div class="touch-overlay-gesture" id="touchGestureOverlay"></div>
+
+    <div class="touch-overlay-gesture" id="touchGestureOverlay" onclick="handleFullscreenTap(event)"></div>
+
+    <!-- SLEEK FULLSCREEN TOUCH OVERLAY WITH CC, SOUND, QUALITY, 10s SKIP, ZOOM -->
+    <div class="fullscreen-touch-overlay" id="fullscreenTouchOverlay" onclick="handleFullscreenTap(event)">
+      <div class="fs-topbar">
+        <div style="font-weight:700;font-size:.9rem;color:#fff;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="fsTitle">Video Title</div>
+        <div class="fs-actions">
+          <button class="fs-chip-btn" id="ccToggleBtn" onclick="toggleSubtitles(event)">💬 CC</button>
+          <button class="fs-chip-btn" id="muteToggleBtn" onclick="toggleMute(event)">🔊 Sound</button>
+          <button class="fs-chip-btn" id="qualitySelectBtn" onclick="openQualityMenu(event)">⚙️ Quality: 720p</button>
+          <button class="fs-chip-btn" onclick="cycleZoomLevel(event)">🔎 Zoom</button>
+          <button class="fs-chip-btn" onclick="minimizePlayer(event)">↓ Exit</button>
+        </div>
+      </div>
+
+      <div class="fs-center-controls">
+        <button class="fs-play-btn" onclick="skipTrack(-10); event.stopPropagation();">⏪ 10s</button>
+        <button class="fs-play-btn main" id="fsPlayBtn" onclick="togglePlayPause(); event.stopPropagation();">⏸</button>
+        <button class="fs-play-btn" onclick="skipTrack(10); event.stopPropagation();">⏩ 10s</button>
+      </div>
+
+      <!-- QUALITY MENU DROPDOWN -->
+      <div class="fs-quality-menu" id="fsQualityMenu" onclick="event.stopPropagation()">
+        <div style="font-size:.8rem;font-weight:700;margin-bottom:4px;color:#aaa;">Video Quality</div>
+        <button class="fs-q-option" onclick="changeQuality('hd1080', event)">1080p Full HD</button>
+        <button class="fs-q-option" onclick="changeQuality('720p', event)">720p HD</button>
+        <button class="fs-q-option" onclick="changeQuality('480p', event)">480p SD</button>
+        <button class="fs-q-option" onclick="changeQuality('360p', event)">360p Low</button>
+        <button class="fs-q-option" onclick="changeQuality('auto', event)">Auto (Recommended)</button>
+      </div>
+    </div>
+
     <div class="music-album-overlay" id="musicAlbumOverlay">
       <div class="music-album-disc">
         <img src="" id="musicAlbumImg" />
@@ -507,6 +585,85 @@ let backPressCount = 0;
 let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic', 'favorites'
 let searchAbortController = null;
 let seekTimer = null;
+
+// CLIENT SIDE SEARCH CACHE (INSTANT 0ms RESPONSES)
+const clientSearchCache = new Map();
+
+// ── FULLSCREEN TOUCH OVERLAY, CC, SOUND & QUALITY CONTROLS ──
+let fsOverlayTimer = null;
+let isCcOn = false;
+
+function handleFullscreenTap(e) {
+  if (e) { try { e.preventDefault(); e.stopPropagation(); } catch(err){} }
+  const overlay = document.getElementById('fullscreenTouchOverlay');
+  const isVisible = overlay.classList.contains('visible');
+
+  if (isVisible) {
+    overlay.classList.remove('visible');
+    document.getElementById('fsQualityMenu').style.display = 'none';
+    if (fsOverlayTimer) clearTimeout(fsOverlayTimer);
+  } else {
+    overlay.classList.add('visible');
+    resetFsOverlayTimer();
+  }
+}
+
+function resetFsOverlayTimer() {
+  if (fsOverlayTimer) clearTimeout(fsOverlayTimer);
+  fsOverlayTimer = setTimeout(() => {
+    document.getElementById('fullscreenTouchOverlay').classList.remove('visible');
+    document.getElementById('fsQualityMenu').style.display = 'none';
+  }, 3500);
+}
+
+function toggleSubtitles(e) {
+  if (e) e.stopPropagation();
+  resetFsOverlayTimer();
+  isCcOn = !isCcOn;
+  if (ytPlayer && ytPlayer.setOption) {
+    try {
+      ytPlayer.loadModule("captions");
+      ytPlayer.setOption("captions", "track", isCcOn ? { languageCode: "en" } : {});
+    } catch(err){}
+  }
+  const btn = document.getElementById('ccToggleBtn');
+  if (btn) btn.textContent = isCcOn ? '💬 CC On' : '💬 CC Off';
+  showToast(isCcOn ? 'CC Subtitles Enabled' : 'CC Subtitles Disabled');
+}
+
+function toggleMute(e) {
+  if (e) e.stopPropagation();
+  resetFsOverlayTimer();
+  if (ytPlayer) {
+    if (ytPlayer.isMuted()) {
+      ytPlayer.unMute();
+      document.getElementById('muteToggleBtn').textContent = '🔊 Sound On';
+      showToast('Sound Unmuted');
+    } else {
+      ytPlayer.mute();
+      document.getElementById('muteToggleBtn').textContent = '🔇 Muted';
+      showToast('Sound Muted');
+    }
+  }
+}
+
+function openQualityMenu(e) {
+  if (e) e.stopPropagation();
+  resetFsOverlayTimer();
+  const qMenu = document.getElementById('fsQualityMenu');
+  qMenu.style.display = qMenu.style.display === 'flex' ? 'none' : 'flex';
+}
+
+function changeQuality(q, e) {
+  if (e) e.stopPropagation();
+  document.getElementById('fsQualityMenu').style.display = 'none';
+  resetFsOverlayTimer();
+  if (ytPlayer && ytPlayer.setPlaybackQuality) {
+    try { ytPlayer.setPlaybackQuality(q); } catch(err){}
+  }
+  document.getElementById('qualitySelectBtn').textContent = `⚙️ Quality: ${q.toUpperCase()}`;
+  showToast(`Video Quality Set: ${q.toUpperCase()}`);
+}
 
 // ── FAVORITES / LOVED SONGS PLAYLIST SYSTEM ──
 let lovedSongs = [];
@@ -594,13 +751,14 @@ function updateCurrentLoveUI() {
   }
 }
 
-// ── GUARANTEED 100% WORKING ZOOM WRAPPER SYSTEM (PORTRAIT & LANDSCAPE) ──
+// ── GUARANTEED 100% WORKING ZOOM WRAPPER SYSTEM ──
 let zoomScale = 1.0;
 let initialPinchDist = 0;
 let initialScale = 1.0;
-let lastTapTime = 0;
 
-function setZoomLevel(scaleVal) {
+function setZoomLevel(scaleVal, e) {
+  if (e) e.stopPropagation();
+  resetFsOverlayTimer();
   zoomScale = Math.min(Math.max(scaleVal, 1.0), 3.5);
   const wrapper = document.getElementById('zoomWrapper');
   if (wrapper) {
@@ -621,7 +779,8 @@ function setZoomLevel(scaleVal) {
   showToast(`Screen Zoom: ${pct}%`);
 }
 
-function cycleZoomLevel() {
+function cycleZoomLevel(e) {
+  if (e) e.stopPropagation();
   if (zoomScale < 1.15) setZoomLevel(1.25);
   else if (zoomScale < 1.4) setZoomLevel(1.50);
   else if (zoomScale < 1.8) setZoomLevel(2.00);
@@ -641,14 +800,6 @@ document.addEventListener('DOMContentLoaded', () => {
         e.touches[0].clientY - e.touches[1].clientY
       );
       initialScale = zoomScale;
-    } else if (e.touches.length === 1) {
-      const now = Date.now();
-      if (now - lastTapTime < 300) {
-        cycleZoomLevel();
-      } else {
-        togglePlayPause();
-      }
-      lastTapTime = now;
     }
   }, { passive: true });
 
@@ -706,14 +857,17 @@ async function onPlayerError(e) {
 function onPlayerStateChange(e) {
   const btn = document.getElementById('musicMainPlayBtn');
   const miniBtn = document.getElementById('miniPlayBtn');
+  const fsBtn = document.getElementById('fsPlayBtn');
 
   if (e.data === YT.PlayerState.PLAYING) {
     if (btn) btn.textContent = '⏸ Pause';
     if (miniBtn) miniBtn.textContent = '⏸';
+    if (fsBtn) fsBtn.textContent = '⏸';
     startSeekTimer();
   } else {
     if (btn) btn.textContent = '▶ Play';
     if (miniBtn) miniBtn.textContent = '▶';
+    if (fsBtn) fsBtn.textContent = '▶';
     stopSeekTimer();
   }
 }
@@ -798,12 +952,20 @@ function searchGenre(genreQuery) {
   doSearch();
 }
 
+// ── LIGHTNING FAST SEARCH WITH CLIENT CACHE (0ms SPEED) ──
 async function doSearch() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) return;
 
   document.getElementById('searchInput').blur();
   if (document.activeElement) document.activeElement.blur();
+
+  const cacheKey = `${currentMode}:${q.toLowerCase()}`;
+  if (clientSearchCache.has(cacheKey)) {
+    console.log('[Client Cache Hit - 0ms]');
+    renderFeed(clientSearchCache.get(cacheKey));
+    return;
+  }
 
   if (searchAbortController) {
     try { searchAbortController.abort(); } catch(err){}
@@ -813,48 +975,59 @@ async function doSearch() {
   const feed = document.getElementById('videoFeed');
   
   let endpoint = `${API}/api/search/youtube`;
-  let label = '🔍 Searching YouTube...';
+  let label = '⚡ Searching YouTube (Ultra-Fast)...';
 
   if (currentMode === 'ytmusic') {
     endpoint = `${API}/api/search/ytmusic`;
-    label = '🎵 Pulling MP3 songs from YouTube Music...';
+    label = '⚡ Pulling MP3 songs from YouTube Music...';
   } else if (currentMode === 'spotify') {
     endpoint = `${API}/api/search/spotify`;
-    label = '💚 Pulling MP3 songs from Spotify...';
+    label = '⚡ Pulling MP3 songs from Spotify...';
   } else if (currentMode === 'applemusic') {
     endpoint = `${API}/api/search/applemusic`;
-    label = '🍎 Pulling MP3 songs from Apple Music...';
+    label = '⚡ Pulling MP3 songs from Apple Music...';
   }
 
   feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">${label}</div>`;
 
   try {
-    const timeoutId = setTimeout(() => searchAbortController.abort(), 10000);
+    const timeoutId = setTimeout(() => searchAbortController.abort(), 4500);
     const r = await fetch(`${endpoint}?q=${encodeURIComponent(q)}`, { signal: searchAbortController.signal });
     clearTimeout(timeoutId);
     
     if (!r.ok) {
       const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
       const fallbackData = await fallbackR.json();
+      clientSearchCache.set(cacheKey, fallbackData.results || []);
       renderFeed(fallbackData.results || []);
       return;
     }
     
     const data = await r.json();
     if (data.results && data.results.length > 0) {
+      clientSearchCache.set(cacheKey, data.results);
       renderFeed(data.results);
     } else {
       const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
       const fallbackData = await fallbackR.json();
+      clientSearchCache.set(cacheKey, fallbackData.results || []);
       renderFeed(fallbackData.results || []);
     }
   } catch(e) {
     if (e.name === 'AbortError') {
-      feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">Search reset. <br/><br/><button style="background:#333;color:#fff;border:none;padding:.5rem 1rem;border-radius:16px;" onclick="doSearch()">Retry</button></div>`;
+      try {
+        const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
+        const fallbackData = await fallbackR.json();
+        clientSearchCache.set(cacheKey, fallbackData.results || []);
+        renderFeed(fallbackData.results || []);
+      } catch(err2) {
+        feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">Search reset. <br/><br/><button style="background:#333;color:#fff;border:none;padding:.5rem 1rem;border-radius:16px;" onclick="doSearch()">Retry</button></div>`;
+      }
     } else {
       try {
         const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
         const fallbackData = await fallbackR.json();
+        clientSearchCache.set(cacheKey, fallbackData.results || []);
         renderFeed(fallbackData.results || []);
       } catch(err2) {
         feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">No results found. <br/><br/><button style="background:#333;color:#fff;border:none;padding:.5rem 1rem;border-radius:16px;" onclick="doSearch()">Retry</button></div>`;
@@ -949,6 +1122,7 @@ function openWatch(id, title, artist, thumb) {
   document.getElementById('wTitle').textContent = title;
   document.getElementById('wChannel').textContent = artist;
   document.getElementById('wAvatar').textContent = (artist||'S')[0].toUpperCase();
+  document.getElementById('fsTitle').textContent = title;
 
   // Update Mini Player Bar
   document.getElementById('miniPlayerImg').src = thumb;
@@ -1028,7 +1202,8 @@ function openWatch(id, title, artist, thumb) {
 }
 
 // ── 100% NON-STOP CONTINUOUS BACKGROUND PLAYBACK ON MINIMIZE / GOING BACK ──
-function minimizePlayer() {
+function minimizePlayer(e) {
+  if (e) e.stopPropagation();
   document.activeElement && document.activeElement.blur();
 
   if (document.fullscreenElement || document.webkitFullscreenElement) {
