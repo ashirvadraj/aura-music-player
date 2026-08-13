@@ -16,6 +16,12 @@
 }
 html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif;background:var(--bg);color:var(--text);user-select:none;}
 
+/* CRITICAL FIX FOR ANDROID WEBVIEW INPUT TYPING & EDITING */
+input, textarea, [contenteditable="true"] {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
 .app{height:100%;width:100%;display:flex;flex-direction:column;position:relative;background:var(--bg);}
 
 /* ── TOP HEADER ── */
@@ -42,9 +48,12 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Roboto',sans-serif
 }
 .yt-input-box{
   flex:1;background:#121212;border:1px solid #303030;border-radius:20px;
-  padding:.4rem.8rem;display:flex;align-items:center;gap:.6rem;position:relative;
+  padding:.4rem .8rem;display:flex;align-items:center;gap:.6rem;position:relative;
 }
-.yt-input-box input{flex:1;background:none;border:none;outline:none;color:#fff;font-size:.95rem;}
+.yt-input-box input{
+  flex:1;background:none;border:none;outline:none;color:#fff;font-size:.95rem;
+  user-select:text !important;-webkit-user-select:text !important;
+}
 .yt-clear-btn{
   background:none;border:none;color:var(--muted);font-size:1.2rem;
   cursor:pointer;display:none;padding:.2rem .6rem;z-index:50;
@@ -314,7 +323,8 @@ function onYouTubeIframeAPIReady() {
 
 // ── SEARCH INPUT HANDLING ──
 function focusSearch() {
-  document.getElementById('searchInput').focus();
+  const si = document.getElementById('searchInput');
+  si.focus();
 }
 
 function toggleClearBtn() {
@@ -329,15 +339,16 @@ function clearSearch(e) {
   const input = document.getElementById('searchInput');
   input.value = '';
   document.getElementById('clearBtn').style.display = 'none';
-  input.blur();
-  if (document.activeElement) document.activeElement.blur();
-
+  
   if (searchAbortController) {
     try { searchAbortController.abort(); } catch(err){}
   }
 
   const feed = document.getElementById('videoFeed');
   feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">Type any song or video name to search</div>`;
+  
+  // Re-focus input so user can type immediately!
+  setTimeout(() => input.focus(), 50);
 }
 
 function handleSearchKey(e) {
@@ -378,20 +389,43 @@ async function doSearch() {
     const timeoutId = setTimeout(() => searchAbortController.abort(), 12000);
     const r = await fetch(`${endpoint}?q=${encodeURIComponent(q)}`, { signal: searchAbortController.signal });
     clearTimeout(timeoutId);
+    
+    if (!r.ok) {
+      // Fallback to primary search endpoint if ytmusic specific endpoint errored
+      const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
+      const fallbackData = await fallbackR.json();
+      renderFeed(fallbackData.results || []);
+      return;
+    }
+    
     const data = await r.json();
-    renderFeed(data.results || []);
+    if (data.results && data.results.length > 0) {
+      renderFeed(data.results);
+    } else {
+      // Direct fallback
+      const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
+      const fallbackData = await fallbackR.json();
+      renderFeed(fallbackData.results || []);
+    }
   } catch(e) {
     if (e.name === 'AbortError') {
       feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">Search reset. <br/><br/><button style="background:#333;color:#fff;border:none;padding:.5rem 1rem;border-radius:16px;" onclick="doSearch()">Retry</button></div>`;
     } else {
-      feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#f44;">Search failed. Check network.<br/><br/><button style="background:#333;color:#fff;border:none;padding:.5rem 1rem;border-radius:16px;" onclick="doSearch()">Retry</button></div>`;
+      // Try fallback automatically on error
+      try {
+        const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
+        const fallbackData = await fallbackR.json();
+        renderFeed(fallbackData.results || []);
+      } catch(err2) {
+        feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">No results found. <br/><br/><button style="background:#333;color:#fff;border:none;padding:.5rem 1rem;border-radius:16px;" onclick="doSearch()">Retry</button></div>`;
+      }
     }
   }
 }
 
 function renderFeed(list) {
   const feed = document.getElementById('videoFeed');
-  if (!list.length) {
+  if (!list || !list.length) {
     feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">No results found</div>`;
     return;
   }
@@ -558,7 +592,9 @@ function switchTab(tab) {
     si.placeholder = 'Search YouTube...';
     genreBar.style.display = 'none';
     document.getElementById('navHome').classList.add('active');
-    clearSearch();
+    si.value = '';
+    toggleClearBtn();
+    feed.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#888;">Type any song or video name to search</div>`;
   } else if (tab === 'music') {
     currentMode = 'ytmusic';
     logo.classList.add('ytmusic');
@@ -566,7 +602,7 @@ function switchTab(tab) {
     si.placeholder = 'Search YouTube Music songs...';
     genreBar.style.display = 'flex';
     document.getElementById('navMusic').classList.add('active');
-    si.value = 'jai ho song';
+    si.value = 'latest bollywood songs';
     toggleClearBtn();
     doSearch();
   } else {
@@ -600,7 +636,6 @@ function handleHardwareBack() {
   }
   if (ws.style.display === 'flex') { closeWatch(); return true; }
 
-  // If search input has text, pressing Back clears search first!
   if (si.value.length > 0) {
     clearSearch();
     return true;
