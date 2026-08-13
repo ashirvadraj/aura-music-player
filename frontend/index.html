@@ -315,7 +315,7 @@ body.is-landscape .yt-nav, body.is-landscape .mini-player-bar { display: none !i
   </div>
 </div>
 
-<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN WITH AUTOMATIC FAIL-PROOF FALLBACK -->
+<!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN -->
 <div class="yt-watch-screen" id="watchScreen">
   <div class="yt-watch-topbar">
     <button class="yt-back-btn" onclick="minimizePlayer()">↓ Minimize</button>
@@ -412,7 +412,7 @@ function onYouTubeIframeAPIReady() {
   });
 }
 
-// ── FAIL-SAFE PLAYBACK FALLBACK (IF EMBED BLOCKED, AUTOMATICALLY PLAY CLEAN AUDIO STREAM) ──
+// ── FAIL-SAFE PLAYBACK FALLBACK ──
 async function onPlayerError(e) {
   console.log('[Player Error]:', e.data);
   if (!currentVideo) return;
@@ -629,7 +629,7 @@ function renderFeed(list) {
   }).join('');
 }
 
-// ── PLAY PLAYER SCREEN & MINI PLAYER BAR ──
+// ── PLAY PLAYER SCREEN & MINI PLAYER BAR (INSTANT SWITCHING WITHOUT FREEZING!) ──
 function openWatch(id, title, artist, thumb) {
   currentVideo = { id, title, artist, thumb };
   document.getElementById('wTitle').textContent = title;
@@ -679,20 +679,28 @@ function openWatch(id, title, artist, thumb) {
   document.getElementById('wBadge').textContent = modeBadge;
   document.getElementById('nowPlayingText').textContent = `🎵 ${modeBadge}`;
 
+  // DISMISS KEYBOARD & SCROLL WATCH SCREEN TO TOP
   document.getElementById('searchInput').blur();
   if (document.activeElement) document.activeElement.blur();
 
   const ws = document.getElementById('watchScreen');
+  ws.scrollTop = 0;
   ws.style.display = 'flex';
   document.getElementById('miniPlayerBar').style.display = 'none';
 
+  // GRACEFULLY STOP PREVIOUS VIDEO BEFORE LOADING NEW ONE TO PREVENT MEDIA CODEC STUCK/FREEZE
+  stopSeekTimer();
   if (ytPlayer) {
-    if (ytPlayer.loadVideoById) {
-      ytPlayer.loadVideoById(id);
-    }
+    if (ytPlayer.stopVideo) { try { ytPlayer.stopVideo(); } catch(e){} }
+    
     setTimeout(() => {
-      if (ytPlayer.playVideo) ytPlayer.playVideo();
-    }, 150);
+      if (ytPlayer.loadVideoById) {
+        ytPlayer.loadVideoById(id);
+      }
+      setTimeout(() => {
+        if (ytPlayer.playVideo) ytPlayer.playVideo();
+      }, 100);
+    }, 50);
   }
 
   checkAutoOrientation();
@@ -708,6 +716,7 @@ function minimizePlayer() {
 
 function maximizePlayer() {
   const ws = document.getElementById('watchScreen');
+  ws.scrollTop = 0;
   ws.style.display = 'flex';
   document.getElementById('miniPlayerBar').style.display = 'none';
 }
