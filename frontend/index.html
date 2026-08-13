@@ -206,23 +206,23 @@ input, textarea, [contenteditable="true"] {
   width:100%!important;height:100%!important;border:none!important;
 }
 
-/* ── FLOATING TOP ACTION BAR FOR LANDSCAPE (NON-BLOCKING POINTER-EVENTS) ── */
-.landscape-top-actions {
+/* ── FLOATING TOP LANDSCAPE ZOOM CHIP (NON-BLOCKING POINTER-EVENTS) ── */
+.landscape-zoom-bar {
   position: absolute; top: max(10px, env(safe-area-inset-top)); right: 12px;
   z-index: 9999; display: none; align-items: center; gap: .5rem;
   pointer-events: none;
 }
-body.is-landscape .landscape-top-actions {
+body.is-landscape .landscape-zoom-bar {
   display: flex !important;
 }
-.ls-action-chip {
+.ls-zoom-chip {
   pointer-events: auto !important;
   background: rgba(0,0,0,.7); backdrop-filter: blur(8px);
   border: 1px solid rgba(255,255,255,.25); border-radius: 16px;
   color: #fff; padding: .35rem .75rem; font-size: .78rem; font-weight: 700;
   cursor: pointer; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.6);
 }
-.ls-action-chip:active { background: #ff0000; }
+.ls-zoom-chip:active { background: #ff0000; }
 
 /* ── AUDIO SEEK SLIDER (SHOWS ONLY IN SPOTIFY/APPLE MUSIC AUDIO MODES) ── */
 .yt-red-slider-container {
@@ -477,12 +477,9 @@ body.audio-mode .zoom-controls-group { display: none !important; }
       <div id="ytPlayerContainer"></div>
     </div>
 
-    <!-- NON-BLOCKING FLOATING LANDSCAPE CONTROLS BAR (ZOOM, CC, QUALITY) -->
-    <div class="landscape-top-actions">
-      <button class="ls-action-chip" onclick="cycleZoomLevel(event)">🔎 Zoom: <span id="lsZoomLabel">100%</span></button>
-      <button class="ls-action-chip" onclick="toggleSubtitles(event)">💬 CC</button>
-      <button class="ls-action-chip" onclick="cycleQuality(event)">⚙️ Quality: <span id="lsQualityLabel">Auto</span></button>
-      <button class="ls-action-chip" onclick="toggleCurrentLove()">❤️</button>
+    <!-- NON-BLOCKING LANDSCAPE ZOOM CHIP (RESTORES ZOOM IN LANDSCAPE) -->
+    <div class="landscape-zoom-bar">
+      <button class="ls-zoom-chip" onclick="cycleZoomLevel(event)">🔎 Zoom: <span id="lsZoomLabel">100%</span></button>
     </div>
 
     <div class="music-album-overlay" id="musicAlbumOverlay">
@@ -568,30 +565,61 @@ let currentMode = 'youtube'; // 'youtube', 'ytmusic', 'spotify', 'applemusic', '
 let searchAbortController = null;
 let seekTimer = null;
 let isUserPaused = false;
-let isCcOn = false;
-let currentQualityIdx = 0;
-const qualities = ['auto', 'hd1080', '720p', '480p', '360p'];
 
 // CLIENT SIDE SEARCH CACHE (INSTANT 0ms RESPONSES)
 const clientSearchCache = new Map();
 
-// ── LOCK SCREEN & BACKGROUND PLAYBACK (WHATSAPP & POWER BUTTON LOCK SCREEN) ──
+// ── FULL NATIVE ANDROID SYSTEM NOTIFICATION SHADE & LOCK SCREEN MEDIA CARD ──
 function setupMediaSession() {
   if (!('mediaSession' in navigator) || !currentVideo) return;
   try {
+    const thumbUrl = currentVideo.thumb || currentVideo.thumbnail || '';
+    
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentVideo.title || 'Aura Music Track',
       artist: currentVideo.artist || 'Aura Music Player',
       album: 'Aura Music',
       artwork: [
-        { src: currentVideo.thumb || currentVideo.thumbnail || '', sizes: '512x512', type: 'image/jpeg' }
+        { src: thumbUrl, sizes: '96x96', type: 'image/jpeg' },
+        { src: thumbUrl, sizes: '128x128', type: 'image/jpeg' },
+        { src: thumbUrl, sizes: '192x192', type: 'image/jpeg' },
+        { src: thumbUrl, sizes: '256x256', type: 'image/jpeg' },
+        { src: thumbUrl, sizes: '384x384', type: 'image/jpeg' },
+        { src: thumbUrl, sizes: '512x512', type: 'image/jpeg' }
       ]
     });
+
+    navigator.mediaSession.playbackState = 'playing';
 
     navigator.mediaSession.setActionHandler('play', () => { isUserPaused = false; togglePlayPause(); });
     navigator.mediaSession.setActionHandler('pause', () => { isUserPaused = true; togglePlayPause(); });
     navigator.mediaSession.setActionHandler('seekbackward', () => { skipTrack(-10); });
     navigator.mediaSession.setActionHandler('seekforward', () => { skipTrack(10); });
+    
+    if ('setActionHandler' in navigator.mediaSession) {
+      try {
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+          if (details.seekTime && ytPlayer && ytPlayer.seekTo) {
+            ytPlayer.seekTo(details.seekTime, true);
+          }
+        });
+      } catch(e){}
+    }
+  } catch(e){}
+}
+
+function updateMediaSessionPosition() {
+  if (!('mediaSession' in navigator) || !ytPlayer) return;
+  try {
+    if ('setPositionState' in navigator.mediaSession && ytPlayer.getDuration && ytPlayer.getCurrentTime) {
+      const duration = ytPlayer.getDuration() || 1;
+      const position = ytPlayer.getCurrentTime() || 0;
+      navigator.mediaSession.setPositionState({
+        duration: Math.max(duration, 1),
+        playbackRate: 1,
+        position: Math.min(position, duration)
+      });
+    }
   } catch(e){}
 }
 
@@ -666,31 +694,6 @@ function resumeLastPlayed() {
       document.getElementById('resumeBanner').style.display = 'none';
     }
   } catch(e){}
-}
-
-// ── CC SUBTITLES & QUALITY TOGGLES FOR LANDSCAPE ──
-function toggleSubtitles(e) {
-  if (e) e.stopPropagation();
-  isCcOn = !isCcOn;
-  if (ytPlayer && ytPlayer.setOption) {
-    try {
-      ytPlayer.loadModule("captions");
-      ytPlayer.setOption("captions", "track", isCcOn ? { languageCode: "en" } : {});
-    } catch(err){}
-  }
-  showToast(isCcOn ? 'CC Subtitles Enabled' : 'CC Subtitles Disabled');
-}
-
-function cycleQuality(e) {
-  if (e) e.stopPropagation();
-  currentQualityIdx = (currentQualityIdx + 1) % qualities.length;
-  const q = qualities[currentQualityIdx];
-  if (ytPlayer && ytPlayer.setPlaybackQuality) {
-    try { ytPlayer.setPlaybackQuality(q); } catch(err){}
-  }
-  const qLbl = document.getElementById('lsQualityLabel');
-  if (qLbl) qLbl.textContent = q.toUpperCase();
-  showToast(`Video Quality: ${q.toUpperCase()}`);
 }
 
 // ── FAVORITES / LOVED SONGS PLAYLIST SYSTEM ──
@@ -820,7 +823,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkResumeBanner();
 });
 
-// ── YOUTUBE PLAYER INIT WITH CC & QUALITY OPTIONS ENABLED ──
+// ── YOUTUBE PLAYER INIT WITH 100% ORIGINAL YOUTUBE CONTROLS ──
 function onYouTubeIframeAPIReady() {
   ytPlayer = new YT.Player('ytPlayerContainer', {
     height: '100%', width: '100%',
@@ -863,6 +866,7 @@ function onPlayerStateChange(e) {
   if (e.data === YT.PlayerState.PLAYING) {
     if (btn) btn.textContent = '⏸ Pause';
     if (miniBtn) miniBtn.textContent = '⏸';
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     startSeekTimer();
     startBgAudioKeeper();
     setupMediaSession();
@@ -876,6 +880,7 @@ function onPlayerStateChange(e) {
     } else {
       if (btn) btn.textContent = '▶ Play';
       if (miniBtn) miniBtn.textContent = '▶';
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
       stopSeekTimer();
     }
   }
@@ -892,6 +897,7 @@ function startSeekTimer() {
       document.getElementById('musicCurTime').textContent = fmtSec(cur);
       document.getElementById('musicDurTime').textContent = fmtSec(dur);
       savePlaybackPosition();
+      updateMediaSessionPosition();
     }
   }, 1000);
 }
