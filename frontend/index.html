@@ -176,12 +176,13 @@ input, textarea, [contenteditable="true"] {
   overflow:hidden;touch-action:none;
 }
 
-/* 100% WORKING ZOOM WRAPPER CONTAINER */
+/* 100% WORKING ZOOM WRAPPER CONTAINER (WORKS IN BOTH PORTRAIT & LANDSCAPE!) */
 .zoom-wrapper {
   width:100%;height:100%;
   transition:transform 0.15s ease-out;
   transform-origin:center center;
   position:relative;
+  display:flex;align-items:center;justify-content:center;
 }
 #ytPlayerContainer{width:100%;height:100%;border:none;overflow:hidden;position:relative;}
 #ytPlayerContainer iframe{
@@ -205,7 +206,6 @@ input, textarea, [contenteditable="true"] {
 
   body.has-open-player #watchScreen,
   body.has-open-player .yt-player-box,
-  body.has-open-player #zoomWrapper,
   body.has-open-player #ytPlayerContainer {
     position: fixed !important;
     top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
@@ -214,6 +214,12 @@ input, textarea, [contenteditable="true"] {
     margin: 0 !important; padding: 0 !important;
     z-index: 999999 !important; background: #000 !important;
     overflow: hidden !important;
+  }
+
+  body.has-open-player #zoomWrapper {
+    width: 100vw !important; height: 100vh !important;
+    position: absolute !important; inset: 0 !important;
+    display: flex !important; align-items: center !important; justify-content: center !important;
   }
 
   body.has-open-player #ytPlayerContainer iframe {
@@ -577,7 +583,7 @@ function updateCurrentLoveUI() {
   }
 }
 
-// ── GUARANTEED 100% WORKING ZOOM WRAPPER SYSTEM ──
+// ── GUARANTEED 100% WORKING ZOOM WRAPPER SYSTEM (PORTRAIT & LANDSCAPE) ──
 let zoomScale = 1.0;
 let initialPinchDist = 0;
 let initialScale = 1.0;
@@ -587,7 +593,9 @@ function setZoomLevel(scaleVal) {
   zoomScale = Math.min(Math.max(scaleVal, 1.0), 3.5);
   const wrapper = document.getElementById('zoomWrapper');
   if (wrapper) {
-    wrapper.style.transform = `scale(${zoomScale})`;
+    const isLandscape = window.innerWidth > window.innerHeight;
+    const baseScale = isLandscape ? 1.35 : 1.0;
+    wrapper.style.transform = `scale(${baseScale * zoomScale})`;
   }
 
   // Update button chips UI
@@ -1007,7 +1015,7 @@ function openWatch(id, title, artist, thumb) {
   checkAutoOrientation();
 }
 
-// ── SAFE BACK & MINIMIZE (100% PREVENTS ANY ANDROID STUCK/FREEZE ON BACK PRESS) ──
+// ── CONTINUOUS UNINTERRUPTED BACKGROUND PLAYBACK ON MINIMIZE / GOING BACK ──
 function minimizePlayer() {
   document.activeElement && document.activeElement.blur();
 
@@ -1018,9 +1026,7 @@ function minimizePlayer() {
     } catch(e){}
   }
 
-  if (ytPlayer && ytPlayer.pauseVideo) {
-    try { ytPlayer.pauseVideo(); } catch(e){}
-  }
+  // DO NOT PAUSE VIDEO! KEEP IT PLAYING CONTINUOUSLY WHILE NAVIGATING OTHER SECTIONS!
 
   const ws = document.getElementById('watchScreen');
   ws.style.display = 'none';
@@ -1264,11 +1270,14 @@ function checkAutoOrientation() {
     if (ytPlayer && ytPlayer.setSize) {
       try { ytPlayer.setSize(window.innerWidth, window.innerHeight); } catch(e){}
     }
+
+    setZoomLevel(zoomScale);
   } else {
     document.body.classList.remove('is-landscape');
     if (ws && ws.style.display === 'flex' && !ws.classList.contains('is-fullscreen')) {
       nav.style.display = 'flex';
     }
+    setZoomLevel(zoomScale);
   }
 }
 
