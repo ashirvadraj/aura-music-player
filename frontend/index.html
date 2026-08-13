@@ -47,16 +47,14 @@ input, textarea, [contenteditable="true"] {
   background:var(--bg);border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;z-index:10;
 }
 .yt-logo{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:1.2rem;letter-spacing:-.5px;cursor:pointer;}
-.yt-logo-icon{width:30px;height:22px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all 0.3s;}
-.yt-logo-icon::after{content:'';border-style:solid;border-width:5px 0 5px 9px;border-color:transparent transparent transparent #fff;margin-left:2px;}
-.yt-logo.ytmusic .yt-logo-icon{background:var(--ytmusic-accent);border-radius:50%;width:26px;height:26px;}
-.yt-logo.ytmusic .yt-logo-icon::after{border-width:4px 0 4px 7px;}
-.yt-logo.spotify .yt-logo-icon{background:var(--spotify-accent);border-radius:50%;width:26px;height:26px;}
-.yt-logo.spotify .yt-logo-icon::after{content:'💚';border:none;font-size:.8rem;margin:0;}
-.yt-logo.applemusic .yt-logo-icon{background:var(--applemusic-accent);border-radius:50%;width:26px;height:26px;}
-.yt-logo.applemusic .yt-logo-icon::after{content:'🍎';border:none;font-size:.8rem;margin:0;}
-.yt-logo.favorites .yt-logo-icon{background:#ff2d55;border-radius:50%;width:26px;height:26px;}
-.yt-logo.favorites .yt-logo-icon::after{content:'❤️';border:none;font-size:.8rem;margin:0;}
+.yt-logo-icon{
+  width:32px;height:32px;border-radius:50%;
+  background:url('./app_logo.png') center/cover no-repeat !important;
+  border:1.5px solid #fff;box-shadow:0 0 10px rgba(255,255,255,.5);
+  display:inline-block;flex-shrink:0;transition:all 0.3s;
+}
+.yt-logo-icon::after{content:none !important;display:none !important;}
+
 
 .yt-hdr-actions{display:flex;align-items:center;gap:1.2rem;}
 .yt-hdr-icon{font-size:1.2rem;cursor:pointer;color:var(--text);background:none;border:none;display:flex;align-items:center;gap:4px;}
