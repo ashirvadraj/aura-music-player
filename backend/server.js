@@ -21,14 +21,13 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // ─────────────────────────────────────────────
-// ROUTE 1: YOUTUBE SEARCH (Ultra-fast via ytsr + fallback)
+// ROUTE 1: YOUTUBE SEARCH
 // ─────────────────────────────────────────────
 app.get('/api/search/youtube', async (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Missing query' });
 
   try {
-    // 1. Fast Node.js search via ytsr
     const searchRes = await ytsr(q, { limit: 20 });
     const items = (searchRes.items || []).filter(i => i.type === 'video');
 
@@ -53,10 +52,9 @@ app.get('/api/search/youtube', async (req, res) => {
       return res.json({ results });
     }
   } catch (e) {
-    console.log(`[Search] ytsr error: ${e.message}, falling back to yt-dlp`);
+    console.log(`[Search] ytsr error: ${e.message}`);
   }
 
-  // 2. Fallback search via yt-dlp
   execFile(YTDLP, [
     ...YTDLP_ARGS_PREFIX,
     `ytsearch15:${q}`,
@@ -65,7 +63,7 @@ app.get('/api/search/youtube', async (req, res) => {
     '--no-warnings',
     '--quiet'
   ], { maxBuffer: 5 * 1024 * 1024 }, (err, stdout) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return res.json({ results: [] });
     const lines = stdout.trim().split('\n').filter(Boolean);
     const results = lines.map(line => {
       try {
@@ -113,7 +111,8 @@ app.get('/api/search/ytmusic', async (req, res) => {
           duration: durSec,
           thumbnail: item.bestThumbnail ? item.bestThumbnail.url : `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
           source: 'ytmusic',
-          videoId: item.id
+          videoId: item.id,
+          isAudioOnly: true
         };
       });
       return res.json({ results });
@@ -122,60 +121,65 @@ app.get('/api/search/ytmusic', async (req, res) => {
     console.log(`[YTMusic] ytsr error: ${e.message}`);
   }
 
-  // Fallback 1: Simple ytsr without extra keywords
-  try {
-    const searchRes = await ytsr(q, { limit: 20 });
-    const items = (searchRes.items || []).filter(i => i.type === 'video');
-    if (items.length > 0) {
-      const results = items.map(item => ({
-        id: item.id,
-        title: item.title,
-        artist: item.author ? item.author.name : 'YouTube Music',
-        duration: 0,
-        thumbnail: item.bestThumbnail ? item.bestThumbnail.url : `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
-        source: 'ytmusic',
-        videoId: item.id
-      }));
-      return res.json({ results });
-    }
-  } catch (e) {
-    console.log(`[YTMusic] Simple ytsr error: ${e.message}`);
-  }
-
-  // Fallback 2: yt-dlp
-  execFile(YTDLP, [
-    ...YTDLP_ARGS_PREFIX,
-    `ytsearch15:${queryWithMusic}`,
-    '--dump-json',
-    '--flat-playlist',
-    '--no-warnings',
-    '--quiet'
-  ], { maxBuffer: 5 * 1024 * 1024 }, (err, stdout) => {
-    if (err) {
-      console.log(`[YTMusic] yt-dlp error: ${err.message}`);
-      return res.json({ results: [] });
-    }
-    const lines = stdout.trim().split('\n').filter(Boolean);
-    const results = lines.map(line => {
-      try {
-        const item = JSON.parse(line);
-        return {
-          id: item.id,
-          title: item.title,
-          artist: item.uploader || item.channel || 'YouTube Music',
-          duration: item.duration || 0,
-          thumbnail: item.thumbnail || `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
-          source: 'ytmusic',
-          videoId: item.id
-        };
-      } catch { return null; }
-    }).filter(Boolean);
-    res.json({ results });
-  });
+  res.json({ results: [] });
 });
 
 // ─────────────────────────────────────────────
-// ROUTE 2: DOWNLOAD (MP3 / MP4)
+// ROUTE 1C: SPOTIFY SEARCH (AUDIO MP3 ONLY)
+// ─────────────────────────────────────────────
+app.get('/api/search/spotify', async (req, res) => {
+  const { q } = req.query;
+  const searchQuery = q ? `${q} spotify audio` : 'top spotify songs audio 2026';
+
+  try {
+    const searchRes = await ytsr(searchQuery, { limit: 20 });
+    const items = (searchRes.items || []).filter(i => i.type === 'video');
+
+    const results = items.map(item => ({
+      id: item.id,
+      title: item.title ? item.title.replace(/official audio|lyric video/gi, '').trim() : 'Spotify Track',
+      artist: item.author ? item.author.name : 'Spotify Artist',
+      duration: 0,
+      thumbnail: item.bestThumbnail ? item.bestThumbnail.url : `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
+      source: 'spotify',
+      videoId: item.id,
+      isAudioOnly: true
+    }));
+    return res.json({ results });
+  } catch (e) {
+    console.log(`[Spotify Search Error]: ${e.message}`);
+    return res.json({ results: [] });
+  }
+});
+
+// ─────────────────────────────────────────────
+// ROUTE 1D: APPLE MUSIC SEARCH (AUDIO MP3 ONLY)
+// ─────────────────────────────────────────────
+app.get('/api/search/applemusic', async (req, res) => {
+  const { q } = req.query;
+  const searchQuery = q ? `${q} apple music audio` : 'top apple music charts 2026';
+
+  try {
+    const searchRes = await ytsr(searchQuery, { limit: 20 });
+    const items = (searchRes.items || []).filter(i => i.type === 'video');
+
+    const results = items.map(item => ({
+      id: item.id,
+      title: item.title ? item.title.replace(/official audio|lyric video/gi, '').trim() : 'Apple Music Track',
+      artist: item.author ? item.author.name : 'Apple Music Artist',
+      duration: 0,
+      thumbnail: item.bestThumbnail ? item.bestThumbnail.url : `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
+      source: 'applemusic',
+      videoId: item.id,
+      isAudioOnly: true
+    }));
+    return res.json({ results });
+  } catch (e) {
+    console.log(`[Apple Music Search Error]: ${e.message}`);
+    return res.json({ results: [] });
+  }
+});
+
 // ─────────────────────────────────────────────
 // ROUTE 2: DOWNLOAD (MP3 / MP4 Instant Pipe Stream)
 // ─────────────────────────────────────────────
@@ -186,14 +190,17 @@ app.get('/api/download', (req, res) => {
   const isMp4 = (format === 'mp4');
   const ext = isMp4 ? 'mp4' : 'mp3';
   const mime = isMp4 ? 'video/mp4' : 'audio/mpeg';
-  const sanitizeTitle = (title || videoId || 'youtube_track').replace(/[/\\?%*:|"<>]/g, '_');
+  const sanitizeTitle = (title || videoId || 'song_track').replace(/[/\\?%*:|"<>]/g, '_');
   const fileName = `${sanitizeTitle}.${ext}`;
 
   const target = videoId ? `https://www.youtube.com/watch?v=${videoId}` : `ytsearch1:${q}`;
-  const formatArg = isMp4 ? 'best[ext=mp4]/best' : 'bestaudio/ba/best';
+  const formatArg = isMp4 ? 'best[ext=mp4]/best' : 'ba/bestaudio/best';
 
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
   res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
   res.setHeader('Content-Type', mime);
+  res.setHeader('Cache-Control', 'no-cache');
 
   const ytdlpArgs = [
     ...YTDLP_ARGS_PREFIX,
