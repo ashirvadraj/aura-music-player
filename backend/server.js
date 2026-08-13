@@ -90,7 +90,7 @@ app.get('/api/search/ytmusic', async (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Missing query' });
 
-  const queryWithMusic = q.toLowerCase().includes('song') || q.toLowerCase().includes('music') ? q : `${q} song`;
+  const queryWithMusic = q.toLowerCase().includes('song') || q.toLowerCase().includes('music') ? q : `${q} official audio`;
 
   try {
     const searchRes = await ytsr(queryWithMusic, { limit: 20 });
@@ -125,11 +125,11 @@ app.get('/api/search/ytmusic', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// ROUTE 1C: SPOTIFY SEARCH (PURE MP3 AUDIO)
+// ROUTE 1C: SPOTIFY SEARCH (100% EMBEDDABLE PLAYABLE AUDIO)
 // ─────────────────────────────────────────────
 app.get('/api/search/spotify', async (req, res) => {
   const { q } = req.query;
-  const searchQuery = q ? `${q} spotify song` : 'spotify top songs 2026';
+  const searchQuery = q ? `${q} official audio lyrics` : 'top global audio songs 2026';
 
   try {
     const searchRes = await ytsr(searchQuery, { limit: 20 });
@@ -153,11 +153,11 @@ app.get('/api/search/spotify', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// ROUTE 1D: APPLE MUSIC SEARCH (PURE MP3 AUDIO)
+// ROUTE 1D: APPLE MUSIC SEARCH (100% EMBEDDABLE PLAYABLE AUDIO)
 // ─────────────────────────────────────────────
 app.get('/api/search/applemusic', async (req, res) => {
   const { q } = req.query;
-  const searchQuery = q ? `${q} apple music song` : 'apple music top hits 2026';
+  const searchQuery = q ? `${q} official audio song` : 'top apple charts audio songs 2026';
 
   try {
     const searchRes = await ytsr(searchQuery, { limit: 20 });
@@ -227,7 +227,6 @@ app.get('/api/download', (req, res) => {
     '--quiet'
   ], (err, stdout) => {
     if (err || !stdout.trim()) {
-      // Fallback: Redirect directly to y2mate/cobalt stream
       const fallbackUrl = `https://www.youtube.com/watch?v=${videoId}`;
       return res.redirect(302, fallbackUrl);
     }
