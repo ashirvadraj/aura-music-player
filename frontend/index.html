@@ -168,7 +168,7 @@ input, textarea, [contenteditable="true"] {
   width:100%!important;height:100%!important;transition:transform 0.3s ease;transform-origin:center center;
 }
 
-/* ── AUTOMATIC FULLSCREEN LANDSCAPE ORIENTATION FOR MOBILE ── */
+/* ── 100% TRUE LANDSCAPE IMMERSIVE FULLSCREEN FOR MOBILE ── */
 @media screen and (orientation: landscape) {
   body.has-open-player .yt-watch-topbar,
   body.has-open-player .yt-watch-info,
@@ -180,21 +180,48 @@ input, textarea, [contenteditable="true"] {
   body.has-open-player #watchScreen {
     display: flex !important;
     position: fixed !important;
-    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
     z-index: 999999 !important;
     background: #000 !important;
     overflow: hidden !important;
   }
 
-  body.has-open-player .yt-player-box {
+  body.has-open-player .yt-player-box,
+  body.has-open-player #ytPlayerContainer {
     position: fixed !important;
-    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
     aspect-ratio: unset !important;
+    margin: 0 !important;
+    padding: 0 !important;
     z-index: 999999 !important;
+    background: #000 !important;
+  }
+
+  body.has-open-player #ytPlayerContainer iframe {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    border: none !important;
   }
 }
 
@@ -960,13 +987,18 @@ function checkAutoOrientation() {
   const nav = document.getElementById('mainNav');
   const isLandscape = window.innerWidth > window.innerHeight;
 
-  if (isLandscape) {
+  if (isLandscape && (ws.style.display === 'flex' || document.body.classList.contains('has-open-player'))) {
     document.body.classList.add('is-landscape');
+    document.body.classList.add('has-open-player');
     nav.style.display = 'none';
-    if (ws && ws.style.display === 'flex') ws.classList.add('is-fullscreen');
+    if (ytPlayer && ytPlayer.setSize) {
+      try { ytPlayer.setSize(window.innerWidth, window.innerHeight); } catch(e){}
+    }
   } else {
     document.body.classList.remove('is-landscape');
-    if (ws && !ws.classList.contains('is-fullscreen')) nav.style.display = 'flex';
+    if (ws && ws.style.display === 'flex' && !ws.classList.contains('is-fullscreen')) {
+      nav.style.display = 'flex';
+    }
   }
 }
 
