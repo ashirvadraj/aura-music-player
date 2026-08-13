@@ -699,38 +699,66 @@ function updateMediaSessionPosition() {
 }
 
 function startBgAudioKeeper() {
+  if (!currentVideo) return;
   try {
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const dst = audioCtx.createMediaStreamDestination();
-      const gain = audioCtx.createGain();
-      gain.gain.value = 0.001; // Force Android OS Media Notification Card
-      osc.connect(gain);
-      gain.connect(dst);
-      osc.start();
-
-      const bgAudio = document.getElementById('bgAudioKeeper');
-      if (bgAudio) {
-        bgAudio.srcObject = dst.stream;
-        bgAudio.play().catch(e => {});
+    const bgAudio = document.getElementById('bgAudioKeeper');
+    if (bgAudio) {
+      const streamUrl = `${API}/api/stream/audio?videoId=${currentVideo.id}`;
+      if (!bgAudio.src || !bgAudio.src.includes(currentVideo.id)) {
+        bgAudio.src = streamUrl;
+        bgAudio.volume = 1.0;
+        if (ytPlayer && ytPlayer.getCurrentTime) {
+          try { bgAudio.currentTime = ytPlayer.getCurrentTime() || 0; } catch(e){}
+        }
       }
-    } else if (audioCtx.state === 'suspended') {
-      audioCtx.resume();
     }
   } catch(e){}
 }
 
-// CONTINUOUS BACKGROUND HEARTBEAT TO ENSURE YOUTUBE PLAYER NEVER STOPS ON LOCK SCREEN OR APP SWITCHING
-setInterval(() => {
-  if (currentVideo && !isUserPaused && ytPlayer && ytPlayer.getPlayerState) {
-    try {
-      const st = ytPlayer.getPlayerState();
-      if (st === YT.PlayerState.PAUSED) {
-        console.log('[Lock Screen / App Switch Heartbeat]: Re-playing video!');
-        ytPlayer.playVideo();
+document.addEventListener('visibilitychange', () => {
+  const bgAudio = document.getElementById('bgAudioKeeper');
+  if (document.hidden) {
+    if (currentVideo && !isUserPaused) {
+      console.log('[Screen Lock / App Switch]: Activating HTML5 Pure Audio Stream!');
+      if (bgAudio) {
+        const streamUrl = `${API}/api/stream/audio?videoId=${currentVideo.id}`;
+        if (!bgAudio.src || !bgAudio.src.includes(currentVideo.id)) {
+          bgAudio.src = streamUrl;
+        }
+        if (ytPlayer && ytPlayer.getCurrentTime) {
+          try { bgAudio.currentTime = ytPlayer.getCurrentTime() || 0; } catch(e){}
+        }
+        bgAudio.play().catch(e => {});
       }
-    } catch(e){}
+    }
+  } else {
+    if (currentVideo && !isUserPaused) {
+      if (bgAudio && !bgAudio.paused) {
+        const curTime = bgAudio.currentTime || 0;
+        if (ytPlayer && ytPlayer.seekTo) {
+          ytPlayer.seekTo(curTime, true);
+          ytPlayer.playVideo();
+        }
+        bgAudio.pause();
+      }
+    }
+  }
+});
+
+// CONTINUOUS BACKGROUND HEARTBEAT TO ENSURE AUDIO STAYS PLAYING
+setInterval(() => {
+  if (currentVideo && !isUserPaused) {
+    const bgAudio = document.getElementById('bgAudioKeeper');
+    if (document.hidden && bgAudio && bgAudio.paused) {
+      bgAudio.play().catch(e => {});
+    } else if (!document.hidden && ytPlayer && ytPlayer.getPlayerState) {
+      try {
+        const st = ytPlayer.getPlayerState();
+        if (st === YT.PlayerState.PAUSED) {
+          ytPlayer.playVideo();
+        }
+      } catch(e){}
+    }
   }
 }, 1000);
 
