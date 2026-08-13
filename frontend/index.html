@@ -26,15 +26,17 @@ input, textarea, [contenteditable="true"] {
 
 .app{height:100%;width:100%;display:flex;flex-direction:column;position:relative;background:var(--bg);}
 
-/* ── RESUME PLAYBACK BANNER ── */
+/* ── RESUME PLAYBACK BANNER (POSITIONED AT BOTTOM DIRECTLY ABOVE NAV BAR) ── */
 .resume-banner {
+  position: fixed; bottom: 56px; left: 0; right: 0;
   background: linear-gradient(90deg, #ff0000, #990000);
-  color: #fff; padding: .5rem 1rem; font-size: .82rem; font-weight: 600;
+  color: #fff; padding: .55rem 1rem; font-size: .82rem; font-weight: 600;
   display: none; align-items: center; justify-content: space-between;
-  cursor: pointer; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,.5);
+  cursor: pointer; z-index: 950; box-shadow: 0 -2px 10px rgba(0,0,0,.6);
+  border-top: 1px solid rgba(255,255,255,.2);
 }
 .resume-banner-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%; }
-.resume-btn-chip { background: #fff; color: #000; padding: 2px 10px; border-radius: 12px; font-weight: 700; font-size: .75rem; }
+.resume-btn-chip { background: #fff; color: #000; padding: 3px 12px; border-radius: 12px; font-weight: 800; font-size: .75rem; }
 
 /* ── TOP HEADER ── */
 .yt-header{
@@ -206,24 +208,6 @@ input, textarea, [contenteditable="true"] {
   width:100%!important;height:100%!important;border:none!important;
 }
 
-/* ── FLOATING TOP LANDSCAPE ZOOM CHIP (NON-BLOCKING POINTER-EVENTS) ── */
-.landscape-zoom-bar {
-  position: absolute; top: max(10px, env(safe-area-inset-top)); right: 12px;
-  z-index: 9999; display: none; align-items: center; gap: .5rem;
-  pointer-events: none;
-}
-body.is-landscape .landscape-zoom-bar {
-  display: flex !important;
-}
-.ls-zoom-chip {
-  pointer-events: auto !important;
-  background: rgba(0,0,0,.7); backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,.25); border-radius: 16px;
-  color: #fff; padding: .35rem .75rem; font-size: .78rem; font-weight: 700;
-  cursor: pointer; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.6);
-}
-.ls-zoom-chip:active { background: #ff0000; }
-
 /* ── AUDIO SEEK SLIDER (SHOWS ONLY IN SPOTIFY/APPLE MUSIC AUDIO MODES) ── */
 .yt-red-slider-container {
   width: 100%; padding: 8px 1rem 4px; background: #121212;
@@ -334,21 +318,6 @@ body.audio-mode .music-controls-panel { display: flex !important; }
 .yt-act-pill.dl-accent{background:var(--accent);font-weight:700;}
 .yt-act-pill.love-pill-btn.is-loved{background:#ff2d55;color:#fff;font-weight:700;}
 
-/* ZOOM CONTROLS IN ACTIONS BAR */
-.zoom-controls-group{
-  display:flex;align-items:center;gap:.4rem;background:#181818;
-  border:1px solid #333;border-radius:18px;padding:2px 8px;flex-shrink:0;
-}
-.zoom-btn-chip{
-  background:none;border:none;color:#aaa;font-size:.78rem;font-weight:600;
-  padding:4px 8px;border-radius:12px;cursor:pointer;
-}
-.zoom-btn-chip.active{background:#ff0000;color:#fff;}
-
-/* HIDE ZOOM IN AUDIO MODES */
-body.audio-mode #zoomToggleBtn,
-body.audio-mode .zoom-controls-group { display: none !important; }
-
 /* ── DOWNLOAD MODAL ── */
 .dl-modal{
   position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.8);
@@ -379,12 +348,6 @@ body.audio-mode .zoom-controls-group { display: none !important; }
 <audio id="bgAudioKeeper" loop src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="></audio>
 
 <div class="app" id="appRoot">
-  <!-- RESUME PLAYBACK BANNER -->
-  <div class="resume-banner" id="resumeBanner" onclick="resumeLastPlayed()">
-    <span class="resume-banner-text" id="resumeBannerText">▶ Resume: Song Name (0:00)</span>
-    <span class="resume-btn-chip">Resume</span>
-  </div>
-
   <!-- TOP HEADER -->
   <div class="yt-header">
     <div class="yt-logo" id="headerLogo" onclick="switchTab('home')">
@@ -423,6 +386,12 @@ body.audio-mode .zoom-controls-group { display: none !important; }
     <div style="text-align:center;padding:3rem 1rem;color:#888;">
       Type any song or video name to search
     </div>
+  </div>
+
+  <!-- RESUME PLAYBACK BANNER (POSITIONED MOVED TO BOTTOM JUST ABOVE TAB NAV BAR) -->
+  <div class="resume-banner" id="resumeBanner" onclick="resumeLastPlayed()">
+    <span class="resume-banner-text" id="resumeBannerText">▶ Resume: Song Name (0:00)</span>
+    <span class="resume-btn-chip">Resume</span>
   </div>
 
   <!-- FLOATING MINI MUSIC PLAYER BAR -->
@@ -467,7 +436,6 @@ body.audio-mode .zoom-controls-group { display: none !important; }
     <div style="font-weight:700;font-size:.9rem;" id="nowPlayingText">Now Playing</div>
     <div style="display:flex;gap:.6rem;align-items:center;">
       <button class="yt-back-btn" id="watchLoveBtn" onclick="toggleCurrentLove()" title="Love Song" style="font-size:1.2rem;">♡</button>
-      <button class="yt-back-btn" id="zoomToggleBtn" onclick="cycleZoomLevel()" title="Screen Zoom" style="font-size:.85rem;font-weight:700;background:#222;border-radius:12px;padding:3px 8px;">🔎 Fit 100%</button>
       <button class="yt-back-btn" onclick="toggleFullscreen()" title="Fullscreen" style="font-size:1.3rem;">⛶</button>
     </div>
   </div>
@@ -475,11 +443,6 @@ body.audio-mode .zoom-controls-group { display: none !important; }
   <div class="yt-player-box" id="playerBox">
     <div id="zoomWrapper" class="zoom-wrapper">
       <div id="ytPlayerContainer"></div>
-    </div>
-
-    <!-- NON-BLOCKING LANDSCAPE ZOOM CHIP (RESTORES ZOOM IN LANDSCAPE) -->
-    <div class="landscape-zoom-bar">
-      <button class="ls-zoom-chip" onclick="cycleZoomLevel(event)">🔎 Zoom: <span id="lsZoomLabel">100%</span></button>
     </div>
 
     <div class="music-album-overlay" id="musicAlbumOverlay">
@@ -525,16 +488,6 @@ body.audio-mode .zoom-controls-group { display: none !important; }
 
     <div class="yt-actions-scroll">
       <button class="yt-act-pill love-pill-btn" id="watchLovePill" onclick="toggleCurrentLove()">❤️ Love Song</button>
-      
-      <!-- ZOOM PRESET CHIPS BAR -->
-      <div class="zoom-controls-group">
-        <span style="font-size:.75rem;color:#aaa;font-weight:700;margin-right:2px;">🔎 Zoom:</span>
-        <button class="zoom-btn-chip active" id="zChip100" onclick="setZoomLevel(1.0)">100%</button>
-        <button class="zoom-btn-chip" id="zChip125" onclick="setZoomLevel(1.25)">125%</button>
-        <button class="zoom-btn-chip" id="zChip150" onclick="setZoomLevel(1.50)">150%</button>
-        <button class="zoom-btn-chip" id="zChip200" onclick="setZoomLevel(2.00)">200%</button>
-      </div>
-
       <button class="yt-act-pill dl-accent" onclick="openDlModal()">⬇️ Download MP3 Song</button>
       <button class="yt-act-pill">↗️ Share</button>
     </div>
@@ -567,6 +520,7 @@ let seekTimer = null;
 let isUserPaused = false;
 let initialPinchDist = 0;
 let initialScale = 1.0;
+let zoomScale = 1.0;
 
 // CLIENT SIDE SEARCH CACHE (INSTANT 0ms RESPONSES)
 const clientSearchCache = new Map();
@@ -784,11 +738,8 @@ function updateCurrentLoveUI() {
   }
 }
 
-// ── GUARANTEED 100% WORKING ZOOM WRAPPER & 2-FINGER PINCH ZOOM SYSTEM ──
-let zoomScale = 1.0;
-
-function setZoomLevel(scaleVal, e) {
-  if (e) e.stopPropagation();
+// ── PURE 2-FINGER PINCH TO ZOOM SYSTEM (ONLY ON YOUTUBE VIDEO BOX) ──
+function applyZoom(scaleVal) {
   zoomScale = Math.min(Math.max(scaleVal, 1.0), 3.5);
   const wrapper = document.getElementById('zoomWrapper');
   if (wrapper) {
@@ -796,38 +747,16 @@ function setZoomLevel(scaleVal, e) {
     const baseScale = isLandscape ? 1.35 : 1.0;
     wrapper.style.transform = `scale(${baseScale * zoomScale})`;
   }
-
-  // Update button chips UI
-  document.querySelectorAll('.zoom-btn-chip').forEach(btn => btn.classList.remove('active'));
-  if (scaleVal === 1.0) document.getElementById('zChip100').classList.add('active');
-  else if (scaleVal === 1.25) document.getElementById('zChip125').classList.add('active');
-  else if (scaleVal === 1.50) document.getElementById('zChip150').classList.add('active');
-  else if (scaleVal === 2.00) document.getElementById('zChip200').classList.add('active');
-
-  const pct = Math.round(zoomScale * 100);
-  document.getElementById('zoomToggleBtn').textContent = `🔎 ${pct}%`;
-  const lsLbl = document.getElementById('lsZoomLabel');
-  if (lsLbl) lsLbl.textContent = `${pct}%`;
-
-  showToast(`Screen Zoom: ${pct}%`);
-}
-
-function cycleZoomLevel(e) {
-  if (e) e.stopPropagation();
-  if (zoomScale < 1.15) setZoomLevel(1.25);
-  else if (zoomScale < 1.4) setZoomLevel(1.50);
-  else if (zoomScale < 1.8) setZoomLevel(2.00);
-  else setZoomLevel(1.0);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   loadLovedSongs();
   checkResumeBanner();
 
-  // 2-FINGER PINCH TO ZOOM LISTENER (DOES NOT BLOCK 1-FINGER YOUTUBE TOUCHES)
-  const watchScreen = document.getElementById('watchScreen');
-  if (watchScreen) {
-    watchScreen.addEventListener('touchstart', (e) => {
+  // 2-FINGER PINCH TO ZOOM GESTURE (ATTACHED ONLY TO PLAYER BOX)
+  const playerBox = document.getElementById('playerBox');
+  if (playerBox) {
+    playerBox.addEventListener('touchstart', (e) => {
       if (e.touches.length === 2) {
         initialPinchDist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
@@ -837,18 +766,18 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, { passive: true });
 
-    watchScreen.addEventListener('touchmove', (e) => {
+    playerBox.addEventListener('touchmove', (e) => {
       if (e.touches.length === 2 && initialPinchDist > 0) {
         const currentDist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
         const factor = currentDist / initialPinchDist;
-        setZoomLevel(initialScale * factor);
+        applyZoom(initialScale * factor);
       }
     }, { passive: true });
 
-    watchScreen.addEventListener('touchend', (e) => {
+    playerBox.addEventListener('touchend', (e) => {
       if (e.touches.length < 2) {
         initialPinchDist = 0;
       }
@@ -1241,8 +1170,8 @@ function openWatch(id, title, artist, thumb) {
   document.getElementById('miniPlayerBar').style.display = 'none';
   document.body.classList.add('has-open-player');
 
-  // RESET ZOOM SCALE TO FIT AT START
-  setZoomLevel(1.0);
+  // RESET ZOOM SCALE AT START
+  applyZoom(1.0);
 
   // GRACEFULLY STOP PREVIOUS VIDEO BEFORE LOADING NEW ONE
   stopSeekTimer();
@@ -1529,13 +1458,13 @@ function checkAutoOrientation() {
       try { ytPlayer.setSize(window.innerWidth, window.innerHeight); } catch(e){}
     }
 
-    setZoomLevel(zoomScale);
+    applyZoom(zoomScale);
   } else {
     document.body.classList.remove('is-landscape');
     if (ws && ws.style.display === 'flex' && !ws.classList.contains('is-fullscreen')) {
       nav.style.display = 'flex';
     }
-    setZoomLevel(zoomScale);
+    applyZoom(zoomScale);
   }
 }
 
