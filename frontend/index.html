@@ -137,11 +137,13 @@ input, textarea, [contenteditable="true"] {
   top: max(10px, env(safe-area-inset-top)) !important;
   left: 10px !important;
   z-index: 2147483647 !important;
-  background: rgba(0, 0, 0, 0.85) !important;
+  transform: none !important;
+  transform-origin: top left !important;
+  background: rgba(0, 0, 0, 0.9) !important;
   color: #fff !important;
   border: 1.5px solid #ff0000 !important;
-  border-radius: 16px !important;
-  padding: 5px 12px !important;
+  border-radius: 18px !important;
+  padding: 6px 14px !important;
   font-weight: 800 !important;
   font-size: .85rem !important;
   box-shadow: 0 4px 15px rgba(0,0,0,.9) !important;
@@ -152,9 +154,21 @@ input, textarea, [contenteditable="true"] {
   align-items: center !important;
   gap: 4px !important;
 }
-.floating-zoom-chip:active { transform: scale(1.1); }
+.floating-zoom-chip:active { transform: scale(1.1) !important; }
 body.has-open-player .floating-zoom-chip {
   display: flex !important;
+}
+.yt-act-pill.loud-boost-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+.yt-act-pill.loud-boost-btn.is-boosted {
+  background: linear-gradient(90deg, #ff0055, #ff0000) !important;
+  color: #fff !important;
+  border-color: #ff0055 !important;
+  box-shadow: 0 0 12px rgba(255, 0, 85, 0.6) !important;
 }
 .suggestion-item:active { background: #333; color: #fff; }
 
@@ -579,6 +593,7 @@ body.audio-mode .music-controls-panel { display: flex !important; }
 
     <div class="yt-actions-scroll">
       <button class="yt-act-pill" id="likePillBtn" onclick="toggleCurrentLove()">♡ Like</button>
+      <button class="yt-act-pill loud-boost-btn" id="loudBoostPill" onclick="toggleLoudBoost()">🔊 Loud Boost: <span id="loudBoostState">OFF</span></button>
       <button class="yt-act-pill dl-accent" onclick="openDlModal()">⬇️ Download MP3 Song</button>
       <button class="yt-act-pill">↗️ Share</button>
     </div>
@@ -950,12 +965,70 @@ function updateCurrentLoveUI() {
   }
 }
 
+// ── LOUD MUSIC AUDIO BOOST SYSTEM (+250% VOLUME BOOST) ──
+let isLoudBoostActive = false;
+let audioCtx = null;
+let gainNode = null;
+
+function toggleLoudBoost() {
+  isLoudBoostActive = !isLoudBoostActive;
+  const stateEl = document.getElementById('loudBoostState');
+  const pill = document.getElementById('loudBoostPill');
+
+  if (isLoudBoostActive) {
+    if (stateEl) stateEl.textContent = 'ON (+250%)';
+    if (pill) pill.classList.add('is-boosted');
+    enableAudioLoudnessBoost();
+    showToast('🔊 Loud Music Audio Boost Activated! (+250% Volume)');
+  } else {
+    if (stateEl) stateEl.textContent = 'OFF';
+    if (pill) pill.classList.remove('is-boosted');
+    disableAudioLoudnessBoost();
+    showToast('🔊 Standard Audio Volume');
+  }
+}
+
+function enableAudioLoudnessBoost() {
+  try {
+    const bgAudio = document.getElementById('bgAudioKeeper');
+    if (bgAudio) {
+      bgAudio.volume = 1.0;
+    }
+    if (!audioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass && bgAudio) {
+        audioCtx = new AudioContextClass();
+        const source = audioCtx.createMediaElementSource(bgAudio);
+        gainNode = audioCtx.createGain();
+        gainNode.gain.value = 2.5; // +250% Volume Boost
+        source.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+      }
+    } else if (gainNode) {
+      gainNode.gain.value = 2.5;
+    }
+  } catch(e){}
+}
+
+function disableAudioLoudnessBoost() {
+  try {
+    if (gainNode) {
+      gainNode.gain.value = 1.0;
+    }
+  } catch(e){}
+}
+
 // ── SCREEN ZOOM SYSTEM FOR YOUTUBE PLAYER (TOGGLE BUTTON) ──
 function applyZoom(scaleVal) {
   zoomScale = Math.min(Math.max(scaleVal, 1.0), 3.0);
   const wrapper = document.getElementById('zoomWrapper');
   if (wrapper) {
     wrapper.style.transform = `scale(${zoomScale})`;
+    wrapper.style.transformOrigin = 'center center';
+  }
+  const btn = document.getElementById('floatingZoomBtn');
+  if (btn) {
+    btn.style.transform = 'none';
   }
   const pct = Math.round(zoomScale * 100);
   document.querySelectorAll('.hdr-zoom-lbl, .pill-zoom-lbl, .player-zoom-lbl').forEach(el => {
@@ -1013,6 +1086,33 @@ async function onPlayerError(e) {
   }
 }
 
+let isAppInBackground = false;
+window.addEventListener('blur', () => { isAppInBackground = true; keepBackgroundPlaying(); });
+window.addEventListener('focus', () => { isAppInBackground = false; });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    isAppInBackground = true;
+    keepBackgroundPlaying();
+  } else {
+    isAppInBackground = false;
+  }
+});
+
+function keepBackgroundPlaying() {
+  if (isUserPaused || !currentVideo) return;
+  try {
+    if (ytPlayer && ytPlayer.playVideo) {
+      ytPlayer.playVideo();
+    }
+  } catch(e){}
+  try {
+    const bgAudio = document.getElementById('bgAudioKeeper');
+    if (bgAudio && bgAudio.paused) {
+      bgAudio.play().catch(e=>{});
+    }
+  } catch(e){}
+}
+
 function onPlayerStateChange(e) {
   const btn = document.getElementById('musicMainPlayBtn');
   const miniBtn = document.getElementById('miniPlayBtn');
@@ -1026,13 +1126,14 @@ function onPlayerStateChange(e) {
     startBgAudioKeeper();
     setupMediaSession();
   } else if (e.data === YT.PlayerState.PAUSED) {
-    if (document.hidden && !isUserPaused && currentVideo) {
-      // Screen lock / app in background: keep playback going
+    if ((document.hidden || isAppInBackground) && !isUserPaused && currentVideo) {
+      // App was minimized to home screen or placed in background: keep playback going non-stop!
       setTimeout(() => {
         if (ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();
       }, 50);
-    } else {
-      // App is open: User clicked YouTube native Pause button!
+      keepBackgroundPlaying();
+    } else if (!isAppInBackground && !document.hidden) {
+      // App is open in foreground: User explicitly tapped Pause button inside app!
       isUserPaused = true;
       if (btn) btn.textContent = '▶ Play';
       if (miniBtn) miniBtn.textContent = '▶';
