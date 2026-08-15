@@ -132,6 +132,30 @@ input, textarea, [contenteditable="true"] {
   gap: 4px !important;
 }
 .player-box-zoom-chip:active { transform: scale(1.1); }
+.floating-zoom-chip {
+  position: fixed !important;
+  top: max(10px, env(safe-area-inset-top)) !important;
+  left: 10px !important;
+  z-index: 2147483647 !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  color: #fff !important;
+  border: 1.5px solid #ff0000 !important;
+  border-radius: 16px !important;
+  padding: 5px 12px !important;
+  font-weight: 800 !important;
+  font-size: .85rem !important;
+  box-shadow: 0 4px 15px rgba(0,0,0,.9) !important;
+  backdrop-filter: blur(8px) !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  display: none;
+  align-items: center !important;
+  gap: 4px !important;
+}
+.floating-zoom-chip:active { transform: scale(1.1); }
+body.has-open-player .floating-zoom-chip {
+  display: flex !important;
+}
 .suggestion-item:active { background: #333; color: #fff; }
 
 /* ── LANDSCAPE MODE TOPBAR FLOATING FIX FOR 100% VISIBLE SINGLE ZOOM BUTTON ── */
@@ -402,6 +426,11 @@ body.audio-mode .music-controls-panel { display: flex !important; }
 </head>
 <body>
 <div class="toast" id="toast"></div>
+
+<!-- PERSISTENT FLOATING ZOOM CHIP (ATTACHED TO BODY SO IT NEVER DISAPPEARS IN PORTRAIT, LANDSCAPE OR FULLSCREEN) -->
+<button id="floatingZoomBtn" class="floating-zoom-chip" onclick="cycleZoomLevel(event)" title="Zoom Screen">
+  🔎 Zoom: <span class="hdr-zoom-lbl">100%</span>
+</button>
 
 <!-- REAL HTML5 AUDIO STREAM FOR BACKGROUND PLAYBACK -->
 <audio id="bgAudioKeeper" loop crossorigin="anonymous"></audio>
