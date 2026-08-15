@@ -111,8 +111,40 @@ input, textarea, [contenteditable="true"] {
   align-items: center !important;
   gap: 4px !important;
 }
-.landscape-zoom-btn:active { transform: scale(1.1); }
+.player-box-zoom-chip {
+  position: absolute !important;
+  top: 10px !important;
+  left: 10px !important;
+  z-index: 2147483647 !important;
+  background: rgba(0, 0, 0, 0.82) !important;
+  color: #fff !important;
+  border: 1.5px solid #ff0000 !important;
+  border-radius: 14px !important;
+  padding: 4px 10px !important;
+  font-weight: 800 !important;
+  font-size: .82rem !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.9) !important;
+  backdrop-filter: blur(8px) !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+.player-box-zoom-chip:active { transform: scale(1.1); }
 .suggestion-item:active { background: #333; color: #fff; }
+
+/* ── LANDSCAPE MODE TOPBAR FLOATING FIX FOR 100% VISIBLE SINGLE ZOOM BUTTON ── */
+@media screen and (orientation: landscape) {
+  body.has-open-player .yt-watch-topbar {
+    display: flex !important;
+    position: fixed !important;
+    top: 0; left: 0; right: 0;
+    z-index: 2147483647 !important;
+    background: rgba(0,0,0,0.75) !important;
+    backdrop-filter: blur(8px) !important;
+  }
+}
 
 /* ── MUSIC GENRE CHIPS BAR ── */
 .ytm-genre-bar{
@@ -461,15 +493,11 @@ body.audio-mode .music-controls-panel { display: flex !important; }
 
 <!-- GUARANTEED WORKING UNIFIED PLAYER SCREEN WITH 100% ORIGINAL YOUTUBE CONTROLS -->
 <div class="yt-watch-screen" id="watchScreen">
-  <!-- 1 SINGLE CLEAN FLOATING ZOOM BUTTON FOR BOTH PORTRAIT AND LANDSCAPE MODES -->
-  <button class="landscape-zoom-btn" onclick="cycleZoomLevel(event)" title="Zoom Screen">
-    🔎 Zoom: <span class="hdr-zoom-lbl">100%</span>
-  </button>
-
   <div class="yt-watch-topbar">
     <button class="yt-back-btn" onclick="handleBackFromWatch()">← Back</button>
     <div style="font-weight:700;font-size:.9rem;" id="nowPlayingText">Now Playing</div>
     <div style="display:flex;gap:.6rem;align-items:center;">
+      <button class="yt-back-btn" onclick="cycleZoomLevel(event)" title="Zoom Screen" style="font-size:.82rem;font-weight:800;background:rgba(255,0,0,.8);border-radius:14px;padding:4px 10px;color:#fff;">🔎 <span class="hdr-zoom-lbl">100%</span></button>
       <button class="yt-back-btn" id="watchLoveBtn" onclick="toggleCurrentLove()" title="Love Song" style="font-size:1.2rem;">♡</button>
       <button class="yt-back-btn" onclick="toggleFullscreen()" title="Fullscreen" style="font-size:1.3rem;">⛶</button>
     </div>
@@ -479,6 +507,11 @@ body.audio-mode .music-controls-panel { display: flex !important; }
     <div id="zoomWrapper" class="zoom-wrapper">
       <div id="ytPlayerContainer"></div>
     </div>
+
+    <!-- FLOATING ZOOM CHIP INSIDE PLAYER BOX - 100% VISIBLE IN PORTRAIT, LANDSCAPE & FULLSCREEN -->
+    <button class="player-box-zoom-chip" onclick="cycleZoomLevel(event)" title="Zoom Screen">
+      🔎 <span class="hdr-zoom-lbl">100%</span>
+    </button>
 
     <div class="music-album-overlay" id="musicAlbumOverlay">
       <div class="music-album-disc">
