@@ -526,7 +526,6 @@ body.audio-mode .music-controls-panel { display: flex !important; }
     <button class="yt-back-btn" onclick="handleBackFromWatch()">← Back</button>
     <div style="font-weight:700;font-size:.9rem;" id="nowPlayingText">Now Playing</div>
     <div style="display:flex;gap:.6rem;align-items:center;">
-      <button class="yt-back-btn" onclick="cycleZoomLevel(event)" title="Zoom Screen" style="font-size:.82rem;font-weight:800;background:rgba(255,0,0,.8);border-radius:14px;padding:4px 10px;color:#fff;">🔎 <span class="hdr-zoom-lbl">100%</span></button>
       <button class="yt-back-btn" id="watchLoveBtn" onclick="toggleCurrentLove()" title="Love Song" style="font-size:1.2rem;">♡</button>
       <button class="yt-back-btn" onclick="toggleFullscreen()" title="Fullscreen" style="font-size:1.3rem;">⛶</button>
     </div>
@@ -536,11 +535,6 @@ body.audio-mode .music-controls-panel { display: flex !important; }
     <div id="zoomWrapper" class="zoom-wrapper">
       <div id="ytPlayerContainer"></div>
     </div>
-
-    <!-- FLOATING ZOOM CHIP INSIDE PLAYER BOX - 100% VISIBLE IN PORTRAIT, LANDSCAPE & FULLSCREEN -->
-    <button class="player-box-zoom-chip" onclick="cycleZoomLevel(event)" title="Zoom Screen">
-      🔎 <span class="hdr-zoom-lbl">100%</span>
-    </button>
 
     <div class="music-album-overlay" id="musicAlbumOverlay">
       <div class="music-album-disc">
