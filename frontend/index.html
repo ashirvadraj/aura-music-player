@@ -131,33 +131,7 @@ input, textarea, [contenteditable="true"] {
   align-items: center !important;
   gap: 4px !important;
 }
-.player-box-zoom-chip:active { transform: scale(1.1); }
-.floating-zoom-chip {
-  position: fixed !important;
-  top: max(10px, env(safe-area-inset-top)) !important;
-  left: 10px !important;
-  z-index: 2147483647 !important;
-  transform: none !important;
-  transform-origin: top left !important;
-  background: rgba(0, 0, 0, 0.9) !important;
-  color: #fff !important;
-  border: 1.5px solid #ff0000 !important;
-  border-radius: 18px !important;
-  padding: 6px 14px !important;
-  font-weight: 800 !important;
-  font-size: .85rem !important;
-  box-shadow: 0 4px 15px rgba(0,0,0,.9) !important;
-  backdrop-filter: blur(8px) !important;
-  cursor: pointer !important;
-  pointer-events: auto !important;
-  display: none;
-  align-items: center !important;
-  gap: 4px !important;
-}
-.floating-zoom-chip:active { transform: scale(1.1) !important; }
-body.has-open-player .floating-zoom-chip {
-  display: flex !important;
-}
+.suggestion-item:active { background: #333; color: #fff; }
 .yt-act-pill.loud-boost-btn {
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -440,11 +414,6 @@ body.audio-mode .music-controls-panel { display: flex !important; }
 </head>
 <body>
 <div class="toast" id="toast"></div>
-
-<!-- PERSISTENT FLOATING ZOOM CHIP (ATTACHED TO BODY SO IT NEVER DISAPPEARS IN PORTRAIT, LANDSCAPE OR FULLSCREEN) -->
-<button id="floatingZoomBtn" class="floating-zoom-chip" onclick="cycleZoomLevel(event)" title="Zoom Screen">
-  🔎 Zoom: <span class="hdr-zoom-lbl">100%</span>
-</button>
 
 <!-- REAL HTML5 AUDIO STREAM FOR BACKGROUND PLAYBACK -->
 <audio id="bgAudioKeeper" loop crossorigin="anonymous"></audio>
@@ -809,23 +778,6 @@ function startBgAudioKeeper() {
   } catch(e){}
 }
 
-// CONTINUOUS BACKGROUND HEARTBEAT TO ENSURE AUDIO STAYS PLAYING
-setInterval(() => {
-  if (currentVideo && !isUserPaused) {
-    const bgAudio = document.getElementById('bgAudioKeeper');
-    if (document.hidden && bgAudio && bgAudio.paused) {
-      bgAudio.play().catch(e => {});
-    } else if (!document.hidden && ytPlayer && ytPlayer.getPlayerState) {
-      try {
-        const st = ytPlayer.getPlayerState();
-        if (st === YT.PlayerState.PAUSED) {
-          ytPlayer.playVideo();
-        }
-      } catch(e){}
-    }
-  }
-}, 1000);
-
 // ── SAVE PLAYBACK POSITION & AUTO-RESUME ("WHERE I LEFT OFF") ──
 function savePlaybackPosition() {
   if (!currentVideo || !ytPlayer || !ytPlayer.getCurrentTime) return;
@@ -1018,7 +970,7 @@ function disableAudioLoudnessBoost() {
   } catch(e){}
 }
 
-// ── SCREEN ZOOM SYSTEM FOR YOUTUBE PLAYER (TOGGLE BUTTON) ──
+// ── ORIGINAL YOUTUBE-STYLE NATIVE TWO-FINGER PINCH TO ZOOM GESTURE ──
 function applyZoom(scaleVal) {
   zoomScale = Math.min(Math.max(scaleVal, 1.0), 3.0);
   const wrapper = document.getElementById('zoomWrapper');
@@ -1026,28 +978,51 @@ function applyZoom(scaleVal) {
     wrapper.style.transform = `scale(${zoomScale})`;
     wrapper.style.transformOrigin = 'center center';
   }
-  const btn = document.getElementById('floatingZoomBtn');
-  if (btn) {
-    btn.style.transform = 'none';
-  }
-  const pct = Math.round(zoomScale * 100);
-  document.querySelectorAll('.hdr-zoom-lbl, .pill-zoom-lbl, .player-zoom-lbl').forEach(el => {
-    el.textContent = `${pct}%`;
-  });
-  showToast(`Screen Zoom: ${pct}%`);
 }
 
-function cycleZoomLevel(e) {
-  if (e) { try { e.preventDefault(); e.stopPropagation(); } catch(err){} }
-  if (zoomScale < 1.15) applyZoom(1.25);
-  else if (zoomScale < 1.4) applyZoom(1.50);
-  else if (zoomScale < 1.8) applyZoom(2.00);
-  else applyZoom(1.0);
+function setupPinchToZoom() {
+  const target = document.getElementById('playerBox');
+  const wrapper = document.getElementById('zoomWrapper');
+  if (!target || !wrapper) return;
+
+  let initialDist = 0;
+  let initialScale = 1.0;
+
+  function getDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy);
+  }
+
+  target.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length === 2) {
+      initialDist = getDistance(e.touches);
+      initialScale = zoomScale || 1.0;
+    }
+  }, { passive: true });
+
+  target.addEventListener('touchmove', (e) => {
+    if (e.touches && e.touches.length === 2 && initialDist > 0) {
+      const currentDist = getDistance(e.touches);
+      const ratio = currentDist / initialDist;
+      let newScale = Math.min(Math.max(initialScale * ratio, 1.0), 3.0);
+      zoomScale = newScale;
+      wrapper.style.transform = `scale(${zoomScale})`;
+      wrapper.style.transformOrigin = 'center center';
+    }
+  }, { passive: true });
+
+  target.addEventListener('touchend', (e) => {
+    if (!e.touches || e.touches.length < 2) {
+      initialDist = 0;
+    }
+  }, { passive: true });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   loadLovedSongs();
   checkResumeBanner();
+  setupPinchToZoom();
 });
 
 // ── YOUTUBE PLAYER INIT WITH 100% ORIGINAL YOUTUBE CONTROLS ──
