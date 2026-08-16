@@ -131,13 +131,7 @@ input, textarea, [contenteditable="true"] {
   align-items: center !important;
   gap: 4px !important;
 }
-.pinch-zoom-overlay {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  z-index: 12;
-  touch-action: none;
-  background: transparent;
-}
+
 .landscape-zoom-btn {
   position: fixed !important;
   top: 14px !important;
@@ -554,9 +548,6 @@ body.audio-mode .music-controls-panel { display: flex !important; }
       <div id="ytPlayerContainer"></div>
     </div>
 
-    <!-- TOUCH GESTURE OVERLAY (CAPTURES 2-FINGER PINCHES & DOUBLE TAPS FOR ZOOMING) -->
-    <div id="pinchZoomOverlay" class="pinch-zoom-overlay"></div>
-
     <div class="music-album-overlay" id="musicAlbumOverlay">
       <div class="music-album-disc">
         <img src="" id="musicAlbumImg" />
@@ -641,25 +632,39 @@ const clientSearchCache = new Map();
 document.addEventListener('visibilitychange', () => {
   const bgAudio = document.getElementById('bgAudioKeeper');
   if (document.hidden && currentVideo && !isUserPaused) {
-    console.log('[Background Playback Keep-Alive]: Activating Audio Stream Keeper on Screen Lock!');
+    console.log('[Background Playback Keep-Alive]: Activating Native Audio Stream on Screen Lock / Minimize!');
+    const curTime = (ytPlayer && ytPlayer.getCurrentTime) ? Math.round(ytPlayer.getCurrentTime()) : 0;
+    const streamUrl = `${API}/api/stream/audio?videoId=${currentVideo.id}`;
+
+    // 1. Trigger Native Android MediaPlayer in Foreground Service
+    if (window.AndroidNative && window.AndroidNative.playNativeAudio) {
+      try {
+        window.AndroidNative.playNativeAudio(streamUrl, currentVideo.title, currentVideo.artist, curTime);
+      } catch(e){}
+    }
+
+    // 2. HTML5 Audio Stream Fallback
     if (bgAudio) {
-      const streamUrl = `${API}/api/stream/audio?videoId=${currentVideo.id}`;
       if (!bgAudio.src || !bgAudio.src.includes(currentVideo.id)) {
         bgAudio.src = streamUrl;
       }
-      if (ytPlayer && ytPlayer.getCurrentTime) {
-        try { bgAudio.currentTime = ytPlayer.getCurrentTime() || 0; } catch(e){}
-      }
+      try { bgAudio.currentTime = curTime; } catch(e){}
       bgAudio.play().catch(e => {});
     }
   } else if (!document.hidden && currentVideo && !isUserPaused) {
+    // Returning to app foreground:
+    if (window.AndroidNative && window.AndroidNative.stopNativeAudio) {
+      try { window.AndroidNative.stopNativeAudio(); } catch(e){}
+    }
     if (bgAudio && !bgAudio.paused) {
       const pos = bgAudio.currentTime || 0;
       if (ytPlayer && ytPlayer.seekTo) {
         ytPlayer.seekTo(pos, true);
-        ytPlayer.playVideo();
       }
       bgAudio.pause();
+    }
+    if (ytPlayer && ytPlayer.playVideo) {
+      try { ytPlayer.playVideo(); } catch(e){}
     }
   }
 });
