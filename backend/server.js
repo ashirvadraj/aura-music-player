@@ -44,31 +44,54 @@ function setCachedResults(key, results) {
   }
 }
 
-// FAST PUBLIC YOUTUBE SEARCH FETCH HELPER (300ms FAST RESPONSE)
-function fetchFastYoutubeApi(query) {
+// DIRECT YOUTUBE SCRAPE HELPER (ULTRA FAST <150ms DIRECT SEARCH)
+function fetchDirectYoutubeScrape(query) {
   return new Promise((resolve) => {
     const encoded = encodeURIComponent(query);
-    const url = `https://inv.tux.pizza/api/v1/search?q=${encoded}&type=video`;
-    
-    const req = https.get(url, { timeout: 2500 }, (res) => {
+    const url = `https://www.youtube.com/results?search_query=${encoded}&sp=EgIQAQ%253D%253D`;
+    const options = {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9'
+      },
+      timeout: 3000
+    };
+
+    const req = https.get(url, options, (res) => {
       let body = '';
       res.on('data', chunk => body += chunk);
       res.on('end', () => {
         try {
-          const data = JSON.parse(body);
-          if (Array.isArray(data) && data.length > 0) {
-            const results = data.slice(0, 15).map(item => ({
-              id: item.videoId,
-              title: item.title,
-              artist: item.author || 'YouTube',
-              duration: item.lengthSeconds || 0,
-              thumbnail: (item.videoThumbnails && item.videoThumbnails.length > 0) 
-                ? item.videoThumbnails[0].url 
-                : `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
-              source: 'youtube',
-              videoId: item.videoId
-            }));
-            return resolve(results);
+          const match = body.match(/var ytInitialData = ({.*?});<\/script>/) || body.match(/ytInitialData\s*=\s*({.+?});/);
+          if (match) {
+            const data = JSON.parse(match[1]);
+            const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
+            const results = [];
+            for (const item of contents) {
+              const vr = item.videoRenderer;
+              if (vr && vr.videoId) {
+                const title = vr.title?.runs?.[0]?.text || 'Video';
+                const artist = vr.ownerText?.runs?.[0]?.text || vr.shortBylineText?.runs?.[0]?.text || 'YouTube';
+                const thumb = vr.thumbnail?.thumbnails?.pop()?.url || `https://i.ytimg.com/vi/${vr.videoId}/hqdefault.jpg`;
+                const durText = vr.lengthText?.simpleText || '0:00';
+                let durSec = 0;
+                const parts = durText.split(':').map(Number);
+                if (parts.length === 2) durSec = parts[0] * 60 + parts[1];
+                else if (parts.length === 3) durSec = parts[0] * 3600 + parts[1] * 60 + parts[2];
+
+                results.push({
+                  id: vr.videoId,
+                  title: title,
+                  artist: artist,
+                  duration: durSec,
+                  thumbnail: thumb,
+                  source: 'youtube',
+                  videoId: vr.videoId
+                });
+                if (results.length >= 15) break;
+              }
+            }
+            if (results.length > 0) return resolve(results);
           }
         } catch(e){}
         resolve(null);
@@ -78,6 +101,11 @@ function fetchFastYoutubeApi(query) {
     req.on('error', () => resolve(null));
     req.on('timeout', () => { req.destroy(); resolve(null); });
   });
+}
+
+// FAST PUBLIC YOUTUBE SEARCH FETCH HELPER
+function fetchFastYoutubeApi(query) {
+  return fetchDirectYoutubeScrape(query);
 }
 
 // ─────────────────────────────────────────────
