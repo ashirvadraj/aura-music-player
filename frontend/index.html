@@ -131,6 +131,35 @@ input, textarea, [contenteditable="true"] {
   align-items: center !important;
   gap: 4px !important;
 }
+.pinch-zoom-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 12;
+  touch-action: none;
+  background: transparent;
+}
+.landscape-zoom-btn {
+  position: fixed !important;
+  top: 14px !important;
+  right: 14px !important;
+  z-index: 2147483647 !important;
+  background: rgba(0, 0, 0, 0.82) !important;
+  color: #fff !important;
+  border: 1.5px solid #ff0000 !important;
+  border-radius: 18px !important;
+  padding: 6px 14px !important;
+  font-size: 0.85rem !important;
+  font-weight: 800 !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.9) !important;
+  cursor: pointer !important;
+  display: none;
+  align-items: center !important;
+  gap: 4px !important;
+}
+body.is-landscape.has-open-player .landscape-zoom-btn {
+  display: flex !important;
+}
 .suggestion-item:active { background: #333; color: #fff; }
 .yt-act-pill.loud-boost-btn {
   background: rgba(255, 255, 255, 0.12);
@@ -415,6 +444,11 @@ body.audio-mode .music-controls-panel { display: flex !important; }
 <body>
 <div class="toast" id="toast"></div>
 
+<!-- FLOATING LANDSCAPE ZOOM BUTTON (VISIBLE ONLY IN LANDSCAPE PLAYER MODE) -->
+<button id="landscapeZoomBtn" class="landscape-zoom-btn" onclick="cycleZoomLevel(event)" title="Zoom Video">
+  🔎 Zoom: <span class="landscape-zoom-lbl">100%</span>
+</button>
+
 <!-- REAL HTML5 AUDIO STREAM FOR BACKGROUND PLAYBACK -->
 <audio id="bgAudioKeeper" loop crossorigin="anonymous"></audio>
 
@@ -509,6 +543,7 @@ body.audio-mode .music-controls-panel { display: flex !important; }
     <button class="yt-back-btn" onclick="handleBackFromWatch()">← Back</button>
     <div style="font-weight:700;font-size:.9rem;" id="nowPlayingText">Now Playing</div>
     <div style="display:flex;gap:.6rem;align-items:center;">
+      <button class="yt-back-btn" id="zoomToggleBtn" onclick="cycleZoomLevel(event)" title="Zoom Video" style="font-size:.82rem;font-weight:700;background:rgba(255,255,255,.15);border-radius:14px;padding:4px 10px;color:#fff;">🔎 <span id="topbarZoomIndicator">100%</span></button>
       <button class="yt-back-btn" id="watchLoveBtn" onclick="toggleCurrentLove()" title="Love Song" style="font-size:1.2rem;">♡</button>
       <button class="yt-back-btn" onclick="toggleFullscreen()" title="Fullscreen" style="font-size:1.3rem;">⛶</button>
     </div>
@@ -518,6 +553,9 @@ body.audio-mode .music-controls-panel { display: flex !important; }
     <div id="zoomWrapper" class="zoom-wrapper">
       <div id="ytPlayerContainer"></div>
     </div>
+
+    <!-- TOUCH GESTURE OVERLAY (CAPTURES 2-FINGER PINCHES & DOUBLE TAPS FOR ZOOMING) -->
+    <div id="pinchZoomOverlay" class="pinch-zoom-overlay"></div>
 
     <div class="music-album-overlay" id="musicAlbumOverlay">
       <div class="music-album-disc">
@@ -970,23 +1008,40 @@ function disableAudioLoudnessBoost() {
   } catch(e){}
 }
 
-// ── ORIGINAL YOUTUBE-STYLE NATIVE TWO-FINGER PINCH TO ZOOM GESTURE ──
+// ── ORIGINAL YOUTUBE-STYLE NATIVE PINCH & DOUBLE-TAP ZOOM SYSTEM ──
 function applyZoom(scaleVal) {
   zoomScale = Math.min(Math.max(scaleVal, 1.0), 3.0);
   const wrapper = document.getElementById('zoomWrapper');
   if (wrapper) {
     wrapper.style.transform = `scale(${zoomScale})`;
     wrapper.style.transformOrigin = 'center center';
+    wrapper.style.transition = 'transform 0.15s ease-out';
   }
+  const pct = Math.round(zoomScale * 100);
+  const topInd = document.getElementById('topbarZoomIndicator');
+  if (topInd) topInd.textContent = `${pct}%`;
+  document.querySelectorAll('.landscape-zoom-lbl, .hdr-zoom-lbl, .pill-zoom-lbl, .player-zoom-lbl').forEach(el => {
+    el.textContent = `${pct}%`;
+  });
+}
+
+function cycleZoomLevel(e) {
+  if (e) { try { e.preventDefault(); e.stopPropagation(); } catch(err){} }
+  if (zoomScale < 1.15) applyZoom(1.35);
+  else if (zoomScale < 1.5) applyZoom(1.75);
+  else if (zoomScale < 1.9) applyZoom(2.25);
+  else applyZoom(1.0);
+  showToast(`Screen Zoom: ${Math.round(zoomScale * 100)}%`);
 }
 
 function setupPinchToZoom() {
-  const target = document.getElementById('playerBox');
+  const overlay = document.getElementById('pinchZoomOverlay');
   const wrapper = document.getElementById('zoomWrapper');
-  if (!target || !wrapper) return;
+  if (!overlay || !wrapper) return;
 
   let initialDist = 0;
   let initialScale = 1.0;
+  let lastTapTime = 0;
 
   function getDistance(touches) {
     const dx = touches[0].clientX - touches[1].clientX;
@@ -994,27 +1049,45 @@ function setupPinchToZoom() {
     return Math.hypot(dx, dy);
   }
 
-  target.addEventListener('touchstart', (e) => {
+  overlay.addEventListener('touchstart', (e) => {
     if (e.touches && e.touches.length === 2) {
+      e.preventDefault();
       initialDist = getDistance(e.touches);
       initialScale = zoomScale || 1.0;
+      wrapper.style.transition = 'none';
+    } else if (e.touches && e.touches.length === 1) {
+      const now = Date.now();
+      if (now - lastTapTime < 300) {
+        // Double Tap Zoom!
+        e.preventDefault();
+        cycleZoomLevel();
+        lastTapTime = 0;
+      } else {
+        lastTapTime = now;
+      }
     }
-  }, { passive: true });
+  }, { passive: false });
 
-  target.addEventListener('touchmove', (e) => {
+  overlay.addEventListener('touchmove', (e) => {
     if (e.touches && e.touches.length === 2 && initialDist > 0) {
+      e.preventDefault();
       const currentDist = getDistance(e.touches);
       const ratio = currentDist / initialDist;
       let newScale = Math.min(Math.max(initialScale * ratio, 1.0), 3.0);
       zoomScale = newScale;
       wrapper.style.transform = `scale(${zoomScale})`;
       wrapper.style.transformOrigin = 'center center';
+      const pct = Math.round(zoomScale * 100);
+      const topInd = document.getElementById('topbarZoomIndicator');
+      if (topInd) topInd.textContent = `${pct}%`;
+      document.querySelectorAll('.landscape-zoom-lbl').forEach(el => { el.textContent = `${pct}%`; });
     }
-  }, { passive: true });
+  }, { passive: false });
 
-  target.addEventListener('touchend', (e) => {
+  overlay.addEventListener('touchend', (e) => {
     if (!e.touches || e.touches.length < 2) {
       initialDist = 0;
+      if (wrapper) wrapper.style.transition = 'transform 0.15s ease-out';
     }
   }, { passive: true });
 }
@@ -1254,48 +1327,32 @@ async function doSearch() {
   feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">${label}</div>`;
 
   try {
-    const timeoutId = setTimeout(() => searchAbortController.abort(), 4500);
+    const timeoutId = setTimeout(() => searchAbortController.abort(), 2500);
     const r = await fetch(`${endpoint}?q=${encodeURIComponent(q)}`, { signal: searchAbortController.signal });
     clearTimeout(timeoutId);
     
-    if (!r.ok) {
-      const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
-      const fallbackData = await fallbackR.json();
-      clientSearchCache.set(cacheKey, fallbackData.results || []);
-      renderFeed(fallbackData.results || []);
-      return;
-    }
-    
-    const data = await r.json();
-    if (data.results && data.results.length > 0) {
-      clientSearchCache.set(cacheKey, data.results);
-      renderFeed(data.results);
-    } else {
-      const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
-      const fallbackData = await fallbackR.json();
-      clientSearchCache.set(cacheKey, fallbackData.results || []);
-      renderFeed(fallbackData.results || []);
-    }
-  } catch(e) {
-    if (e.name === 'AbortError') {
-      try {
-        const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
-        const fallbackData = await fallbackR.json();
-        clientSearchCache.set(cacheKey, fallbackData.results || []);
-        renderFeed(fallbackData.results || []);
-      } catch(err2) {
-        feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">Search reset. <br/><br/><button style="background:#333;color:#fff;border:none;padding:.5rem 1rem;border-radius:16px;" onclick="doSearch()">Retry</button></div>`;
-      }
-    } else {
-      try {
-        const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
-        const fallbackData = await fallbackR.json();
-        clientSearchCache.set(cacheKey, fallbackData.results || []);
-        renderFeed(fallbackData.results || []);
-      } catch(err2) {
-        feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">No results found. <br/><br/><button style="background:#333;color:#fff;border:none;padding:.5rem 1rem;border-radius:16px;" onclick="doSearch()">Retry</button></div>`;
+    if (r.ok) {
+      const data = await r.json();
+      if (data.results && data.results.length > 0) {
+        clientSearchCache.set(cacheKey, data.results);
+        renderFeed(data.results);
+        return;
       }
     }
+  } catch(e) {}
+
+  // Instant Fallback Search
+  try {
+    const fallbackR = await fetch(`${API}/api/search/youtube?q=${encodeURIComponent(q)}`);
+    const fallbackData = await fallbackR.json();
+    if (fallbackData.results && fallbackData.results.length > 0) {
+      clientSearchCache.set(cacheKey, fallbackData.results);
+      renderFeed(fallbackData.results);
+    } else {
+      feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">No results found. <br/><br/><button style="background:#333;color:#fff;border:none;padding:.5rem 1rem;border-radius:16px;" onclick="doSearch()">Retry</button></div>`;
+    }
+  } catch(err2) {
+    feed.innerHTML = `<div style="text-align:center;padding:4rem 1rem;color:#aaa;">Search timed out. <br/><br/><button style="background:#333;color:#fff;border:none;padding:.5rem 1rem;border-radius:16px;" onclick="doSearch()">Retry</button></div>`;
   }
 }
 
